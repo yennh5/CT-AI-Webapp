@@ -43,19 +43,26 @@
         .option.correct{background:#dcfce3;border-color:#86efac}
         .option.incorrect{background:#fee2e2;border-color:#fca5a5}
         .explain{margin-top:8px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color);display:none}
-        /* Chapter and Material Styles */
-        .chapter-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;margin-top:16px}
-        .chapter-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:16px;cursor:pointer;transition:all .3s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-        .chapter-card:hover{box-shadow:0 6px 16px rgba(0,0,0,.1);transform:translateY(-2px)}
-        .chapter-card.active{border-color:var(--primary);background:rgba(34,179,164,0.05)}
-        .chapter-card h3{color:var(--primary);margin-bottom:8px;font-size:1rem}
-        .chapter-card p{color:var(--text-gray);font-size:.9rem;margin-bottom:10px}
+        
+        /* Chapter Table Styles */
+        .chapter-table{width:100%;border-collapse:collapse;margin-top:16px;background:var(--bg-card);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+        .chapter-table thead{background:var(--primary);color:#fff}
+        .chapter-table th{padding:14px;text-align:left;font-weight:600;border-bottom:2px solid var(--border-color)}
+        .chapter-table td{padding:14px;border-bottom:1px solid var(--border-color)}
+        .chapter-table tbody tr:hover{background:rgba(34,179,164,0.05)}
+        .chapter-table tbody tr:last-child td{border-bottom:none}
+        .chapter-column-1{width:15%;font-weight:600;color:var(--primary)}
+        .chapter-column-2{width:65%;color:var(--text-dark)}
+        .chapter-column-3{width:20%;text-align:center}
+        
+        /* Material Styles */
         .material-item{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
         .material-item:hover{background:rgba(34,179,164,0.05);border-color:var(--primary)}
         .material-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(34,179,164,0.1);font-size:1.2rem}
         .material-info{flex:1}
         .material-info strong{display:block;color:var(--text-dark);margin-bottom:4px}
         .material-info span{font-size:.85rem;color:var(--text-gray)}
+        
         /* Modal Styles */
         @media(max-width:900px){.sidebar{display:none}}
         #viewerModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:250;align-items:center;justify-content:center;padding:18px}
@@ -119,58 +126,65 @@
         const CHAPTERS_DATA = [
             {
                 id: 1,
-                name: 'CHƯƠNG 1: Giới thiệu cơ bản',
+                chapter: 'Chương 1',
+                name: 'Introduction to Artificial Intelligence (Giới thiệu về AI)',
                 materials: [
-                    { id: 1, name: 'Bài 1: Bảng Hiragana', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-                    { id: 2, name: 'Video giới thiệu', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
+                    { id: 1, name: 'Giới thiệu AI cơ bản', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 2, name: 'Video nhập môn', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
                 ]
             },
             {
                 id: 2,
-                name: 'CHƯƠNG 2: Ngữ pháp cơ bản',
+                chapter: 'Chương 2',
+                name: 'Quality Characteristics for AI-Based Systems (Đặc tính Chất lượng cho Hệ thống AI)',
                 materials: [
-                    { id: 3, name: 'Bài giảng 1', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 3, name: 'Đặc tính chất lượng', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
                     { id: 4, name: 'Bài tập thực hành', type: 'xlsx', url: 'https://example.com/baitap.xlsx' }
                 ]
             },
             {
                 id: 3,
-                name: 'CHƯƠNG 3: Phát âm & Tones',
+                chapter: 'Chương 3',
+                name: 'Machine Learning (Học máy)',
                 materials: [
-                    { id: 5, name: 'Video phát âm', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
-                    { id: 6, name: 'Tài liệu tham khảo', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                    { id: 5, name: 'Bài giảng Machine Learning', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+                    { id: 6, name: 'Tài liệu ML nâng cao', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
                 ]
             },
             {
                 id: 4,
-                name: 'CHƯƠNG 4: Hội thoại thường ngày',
+                chapter: 'Chương 4',
+                name: 'Testing AI-Based Systems (Kiểm thử các hệ thống dựa trên AI - GenAI và LLM)',
                 materials: [
-                    { id: 7, name: 'Bài hội thoại 1', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
-                    { id: 8, name: 'Script hội thoại', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                    { id: 7, name: 'Kiểm thử AI/GenAI', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 8, name: 'Video kiểm thử LLM', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
                 ]
             },
             {
                 id: 5,
-                name: 'CHƯƠNG 5: Văn hóa & Quán tục',
+                chapter: 'Chương 5',
+                name: 'Input Data Testing for Machine Learning Systems (Kiểm thử dữ liệu đầu vào cho hệ thống Học máy)',
                 materials: [
-                    { id: 9, name: 'Tài liệu văn hóa', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-                    { id: 10, name: 'Video tài liệu', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
+                    { id: 9, name: 'Kiểm thử dữ liệu đầu vào', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 10, name: 'Các kỹ thuật kiểm thử', type: 'pptx', url: 'https://example.com/kythuattest.pptx' }
                 ]
             },
             {
                 id: 6,
-                name: 'CHƯƠNG 6: Ôn tập & Luyện thi',
+                chapter: 'Chương 6',
+                name: 'Model Testing for Machine Learning Systems (Kiểm thử mô hình cho hệ thống Học máy)',
                 materials: [
-                    { id: 11, name: 'Đề ôn tập', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-                    { id: 12, name: 'Bộ câu hỏi thử', type: 'xlsx', url: 'https://example.com/cauhoi.xlsx' }
+                    { id: 11, name: 'Kiểm thử mô hình ML', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 12, name: 'Benchmark & Metrics', type: 'xlsx', url: 'https://example.com/metrics.xlsx' }
                 ]
             },
             {
                 id: 7,
-                name: 'CHƯƠNG 7: Chuyên đề nâng cao',
+                chapter: 'Chương 7',
+                name: 'Machine Learning Development Testing (Kiểm thử quá trình phát triển Học máy)',
                 materials: [
-                    { id: 13, name: 'Bài giảng nâng cao', type: 'pptx', url: 'https://example.com/nangcao.pptx' },
-                    { id: 14, name: 'Kỹ năng thi JLPT', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                    { id: 13, name: 'Quy trình phát triển ML', type: 'pptx', url: 'https://example.com/ml-dev.pptx' },
+                    { id: 14, name: 'Best practices testing', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
                 ]
             }
         ];
@@ -211,34 +225,47 @@
             else if(page==='history') renderHistory();
         }
 
-        // Theory with Chapters
+        // Theory with Chapters Table
         function renderTheory(){
             const content = document.getElementById('dynamic-content');
             content.innerHTML = `
                 <h2 class="section-title">Lý thuyết & Tài liệu</h2>
-                <p class="small" style="margin-bottom:16px;">Chọn một chương để xem tài liệu học tập</p>
-                <div class="chapter-grid" id="chapterGrid"></div>`;
+                <p class="small" style="margin-bottom:16px;">Chọn "Xem chi tiết" để xem tài liệu học tập của từng chương</p>
+                <table class="chapter-table">
+                    <thead>
+                        <tr>
+                            <th style="width:15%;">Chương</th>
+                            <th style="width:65%;">Tên chương</th>
+                            <th style="width:20%;text-align:center;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chapterTableBody">
+                    </tbody>
+                </table>`;
             
-            const grid = document.getElementById('chapterGrid');
+            const tbody = document.getElementById('chapterTableBody');
             CHAPTERS_DATA.forEach(chapter => {
-                const card = document.createElement('div');
-                card.className = 'chapter-card';
-                card.onclick = () => showChapterMaterials(chapter);
-                card.innerHTML = `
-                    <h3><i class='bx bx-book'></i> ${chapter.name}</h3>
-                    <p>${chapter.materials.length} tài liệu</p>
-                    <button class="btn primary" style="width:100%;margin-top:8px;">Xem chi tiết</button>`;
-                grid.appendChild(card);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="chapter-column-1">${chapter.chapter}</td>
+                    <td class="chapter-column-2">${chapter.name}</td>
+                    <td class="chapter-column-3">
+                        <button class="btn primary" onclick="showChapterMaterials(${chapter.id})">Xem chi tiết</button>
+                    </td>`;
+                tbody.appendChild(row);
             });
         }
 
-        function showChapterMaterials(chapter){
+        function showChapterMaterials(chapterId){
+            const chapter = CHAPTERS_DATA.find(c => c.id === chapterId);
+            if(!chapter) return;
+            
             currentChapter = chapter;
             const content = document.getElementById('dynamic-content');
             content.innerHTML = `
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
                     <button class="btn" onclick="renderTheory()"><i class='bx bx-arrow-back'></i> Quay lại</button>
-                    <h2 class="section-title" style="margin:0;">${chapter.name}</h2>
+                    <h2 class="section-title" style="margin:0;">${chapter.chapter}: ${chapter.name}</h2>
                 </div>
                 <div id="materialsContainer"></div>`;
             
