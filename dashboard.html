@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống luyện thi CT-AI v2.0</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="layout-wrapper">
+        
+        <aside class="sidebar">
+            <h2 class="logo-title">CT-AI v2.0</h2>
+            
+            <nav class="menu" id="sidebar-menu">
+                <button onclick="changeContent('learning')">Học tập (Learning)</button>
+                <button onclick="changeContent('mockExam')">Luyện đề (Mock Exams)</button>
+                <button onclick="changeContent('progress')">Tiến độ (Dashboard)</button>
+            </nav>
+            
+            <div class="user-info">
+                <p id="welcome-msg" style="margin-bottom: 15px; font-size: 14px; text-align: center; color: #ecf0f1;"></p>
+                <button class="logout-btn" onclick="handleLogout()">Đăng xuất</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="dynamic-content">
+                <h1>Chào mừng đến với Hệ thống</h1>
+                <p>Vui lòng chọn các mục bên thanh Sidebar để bắt đầu.</p>
+            </div>
+        </main>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
