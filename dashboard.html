@@ -82,9 +82,8 @@
     </div>
 
     <script>
-        // Minimal data and storage keys
-        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', courses: 'ctai_courses_v2' };
-        const DEFAULT_COURSES = [ { id: 'c_n4', title: 'Khóa N4', author: 'CT-AI', date:'2026-01-01', progress: 12 } ];
+        // Minimal data and storage keys (removed course-specific data)
+        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2' };
         const DEFAULT_FLASHCARDS = [ {front: 'Hiragana: あ', back: 'Âm "a"'}, {front: '学生', back: 'Học sinh'} ];
         const DEFAULT_QUESTIONS = [ {id:1, question:'Hiragana "あ" đọc là gì?', choices:['a','i','u','e'], answer:0, explain:'Ký tự あ đọc là "a".'} ];
 
@@ -93,7 +92,6 @@
 
         let flashcards = loadOrDefault(STORAGE_KEYS.flashcards, DEFAULT_FLASHCARDS);
         let questions = loadOrDefault(STORAGE_KEYS.questions, DEFAULT_QUESTIONS);
-        let courses = loadOrDefault(STORAGE_KEYS.courses, DEFAULT_COURSES);
 
         // Content renderers
         function changeContent(page, btnEl){ document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active');
@@ -104,34 +102,82 @@
         function openViewer(title, htmlContent){ document.getElementById('viewerTitle').innerText = title; document.getElementById('viewerBody').innerHTML = htmlContent; document.getElementById('viewerModal').style.display='flex'; }
         function closeViewer(){ document.getElementById('viewerModal').style.display='none'; document.getElementById('viewerBody').innerHTML=''; }
 
-        function renderTheory(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `\n            <h2 class="section-title">Lý thuyết & Tài liệu</h2>\n            <div style="display:flex;gap:12px;flex-wrap:wrap;">\n                <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">\n                    <h4>Bảng chữ cái Hiragana</h4>\n                    <p class="small">Tài liệu tổng hợp - PDF mẫu</p>\n                    <div style="margin-top:10px;display:flex;gap:8px;">\n                        <button class="btn" onclick="openViewer('Bảng chữ cái Hiragana','<iframe src=\"https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\" style=\"width:100%;height:520px;border:0\"></iframe>')">Xem PDF</button>\n                    </div>\n                </div>\n                <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">\n                    <h4>Ngữ pháp cơ bản</h4>\n                    <p class="small">Tóm tắt ngữ pháp</p>\n                    <div style="margin-top:10px;display:flex;gap:8px;">\n                        <button class="btn" onclick="openViewer('Ngữ pháp cơ bản','<div style=\\"padding:12px;max-height:520px;overflow:auto;\\">\n                        <h3>Ngữ pháp: は (wa)</h3><p>は đánh dấu chủ đề câu.</p>\n                        <h3>Ngữ pháp: が (ga)</h3><p>が đánh dấu chủ ngữ mới hoặc chủ thể hành động.</p>\n                        </div>')">Xem</button>\n                    </div>\n                </div>\n            </div>`; }
+        function renderTheory(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
+            <h2 class="section-title">Lý thuyết & Tài liệu</h2>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">
+                    <h4>Bảng chữ cái Hiragana</h4>
+                    <p class="small">Tài liệu tổng hợp - PDF mẫu</p>
+                    <div style="margin-top:10px;display:flex;gap:8px;">
+                        <button class="btn" onclick="openViewer('Bảng chữ cái Hiragana','<iframe src=\"https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\" style=\"width:100%;height:520px;border:0\"></iframe>')">Xem PDF</button>
+                    </div>
+                </div>
+                <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">
+                    <h4>Ngữ pháp cơ bản</h4>
+                    <p class="small">Tóm tắt ngữ pháp</p>
+                    <div style="margin-top:10px;display:flex;gap:8px;">
+                        <button class="btn" onclick="openViewer('Ngữ pháp cơ bản','<div style=\\"padding:12px;max-height:520px;overflow:auto;\\">\n                        <h3>Ngữ pháp: は (wa)</h3><p>は đánh dấu chủ đề câu.</p>\n                        <h3>Ngữ pháp: が (ga)</h3><p>が đánh dấu chủ ngữ mới hoặc chủ thể hành động.</p>\n                        </div>')">Xem</button>
+                    </div>
+                </div>
+            </div>`; }
 
         // Flashcards
         let fcIndex = 0;
-        function renderFlashcards(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `\n            <h2 class="section-title">Flashcard</h2>\n            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">\n                <div class="card-viewport">\n                    <div id="flashcard" class="flashcard" onclick="flipCard()">\n                        <div class="side front" id="fcFront"></div>\n                        <div class="side back" id="fcBack"></div>\n                    </div>\n                </div>\n                <div style="display:flex;flex-direction:column;gap:8px;">\n                    <div style="display:flex;gap:8px;">\n                        <button class="btn" onclick="prevCard()">Prev</button>\n                        <button class="btn" onclick="nextCard()">Next</button>\n                    </div>\n                    <div style="display:flex;gap:8px;">\n                        <button class="btn primary" onclick="markKnown()">Đã nhớ</button>\n                        <button class="btn" onclick="shuffleFlashcards()">Shuffle</button>\n                    </div>\n                </div>\n            </div>`; fcIndex=0; renderFlashcardCard(); }
+        function renderFlashcards(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
+            <h2 class="section-title">Flashcard</h2>
+            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+                <div class="card-viewport">
+                    <div id="flashcard" class="flashcard" onclick="flipCard()">
+                        <div class="side front" id="fcFront"></div>
+                        <div class="side back" id="fcBack"></div>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn" onclick="prevCard()">Prev</button>
+                        <button class="btn" onclick="nextCard()">Next</button>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn primary" onclick="markKnown()">Đã nhớ</button>
+                        <button class="btn" onclick="shuffleFlashcards()">Shuffle</button>
+                    </div>
+                </div>
+            </div>`; fcIndex=0; renderFlashcardCard(); }
         function renderFlashcardCard(){ const el = document.getElementById('flashcard'); if(!el) return; if(flashcards.length===0){ el.innerHTML='<div style="padding:16px;">Chưa có flashcard.</div>'; return; } const f = flashcards[fcIndex]; document.getElementById('fcFront').innerHTML = `<div style="font-size:1.05rem;font-weight:600">${escapeHtml(f.front)}</div>`; document.getElementById('fcBack').innerHTML = `<div style="font-size:1rem;color:var(--text-gray)">${escapeHtml(f.back)}</div>`; el.classList.remove('flipped'); }
         function flipCard(){ const el=document.getElementById('flashcard'); if(el) el.classList.toggle('flipped'); }
         function nextCard(){ if(flashcards.length===0) return; fcIndex=(fcIndex+1)%flashcards.length; renderFlashcardCard(); }
         function prevCard(){ if(flashcards.length===0) return; fcIndex=(fcIndex-1+flashcards.length)%flashcards.length; renderFlashcardCard(); }
-        function markKnown(){ courses[0].progress = Math.min(100, courses[0].progress + 5); saveAndReturn(STORAGE_KEYS.courses, courses); updateCourseBars(); renderFlashcardCard(); }
+        function markKnown(){ alert('Đã đánh dấu là nhớ.'); renderFlashcardCard(); }
         function shuffleFlashcards(){ flashcards = flashcards.sort(()=>Math.random()-0.5); saveAndReturn(STORAGE_KEYS.flashcards, flashcards); renderFlashcardCard(); }
 
         // Exercises
-        function renderExercises(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `\n            <h2 class="section-title">Bài tập</h2>\n            <div class="quiz" id="quizArea"></div>`; renderQuizList(); }
+        function renderExercises(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
+            <h2 class="section-title">Bài tập</h2>
+            <div class="quiz" id="quizArea"></div>`; renderQuizList(); }
         function renderQuizList(){ const area = document.getElementById('quizArea'); area.innerHTML=''; if(questions.length===0){ area.innerHTML='<div class="small">Chưa có bài tập.</div>'; return; } questions.forEach(q=>{ const qdiv=document.createElement('div'); qdiv.className='question'; const opts = q.choices.map((c, idx)=>`<div class="option" data-q="${q.id}" data-idx="${idx}" onclick="handleOptionClick(this)">${escapeHtml(c)}</div>`).join(''); qdiv.innerHTML = `<div><strong>${escapeHtml(q.question)}</strong></div><div class="options">${opts}</div><div class="explain" id="explain_${q.id}">${escapeHtml(q.explain||'')}</div>`; area.appendChild(qdiv); }); }
         function handleOptionClick(el){ const qid = Number(el.getAttribute('data-q')); const idx = Number(el.getAttribute('data-idx')); const q = questions.find(x=>x.id===qid); const parent = el.parentElement; Array.from(parent.children).forEach(opt=>{ opt.style.pointerEvents='none'; opt.classList.remove('correct','incorrect'); }); if(idx===q.answer) el.classList.add('correct'); else { el.classList.add('incorrect'); const correctEl = parent.querySelector(`[data-idx="${q.answer}"]`); if(correctEl) correctEl.classList.add('correct'); } const ex = document.getElementById('explain_'+qid); if(ex) ex.style.display='block'; }
 
-        // Progress (Chart.js)
+        // Progress (Chart.js) - simple placeholder without course list
         let progressChart = null;
-        function renderProgress(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `\n            <h2 class="section-title">Tiến độ học tập</h2>\n            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">\n                <div style="width:420px;background:var(--bg-card);padding:12px;border-radius:10px;border:1px solid var(--border-color);">\n                    <h4>Tiến độ cá nhân</h4>\n                    <canvas id="progressCanvas" width="400" height="240"></canvas>\n                    <div style="margin-top:10px;" id="avgScoreDisplay"></div>\n                </div>\n                <div style="flex:1;min-width:320px;background:var(--bg-card);padding:12px;border-radius:10px;border:1px solid var(--border-color);">\n                    <h4>Chi tiết khóa</h4>\n                    <div id="progressList"></div>\n                </div>\n            </div>`;
-            const ctx = document.getElementById('progressCanvas').getContext('2d'); const labels = courses.map(c=>c.title); const data = courses.map(c=>c.progress); if(progressChart) progressChart.destroy(); progressChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:['#22b3a4','#fbbf24','#60a5fa','#a78bfa'] }] }, options:{plugins:{legend:{position:'bottom'}}} ); document.getElementById('avgScoreDisplay').innerHTML = `<div class="small">Điểm trung bình (mô phỏng): ${computeAvgScore()}%</div>`; const list = document.getElementById('progressList'); list.innerHTML=''; courses.forEach(c=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML = `<strong>${c.title}</strong><div class="small">Tiến trình: ${c.progress}%</div><div class="progress-bar-bg" style="margin-top:8px"><div class="progress-bar-fill" style="height:8px;background:var(--primary);width:${c.progress}%;border-radius:6px"></div></div>`; list.appendChild(d); }); }
-        function computeAvgScore(){ if(!courses || courses.length===0) return 0; return Math.round(courses.reduce((a,b)=>a+b.progress,0)/courses.length); }
+        function renderProgress(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
+            <h2 class="section-title">Tiến độ học tập</h2>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+                <div style="width:420px;background:var(--bg-card);padding:12px;border-radius:10px;border:1px solid var(--border-color);">
+                    <h4>Tiến độ cá nhân</h4>
+                    <canvas id="progressCanvas" width="400" height="240"></canvas>
+                    <div style="margin-top:10px;" id="avgScoreDisplay"></div>
+                </div>
+                <div style="flex:1;min-width:320px;background:var(--bg-card);padding:12px;border-radius:10px;border:1px solid var(--border-color);">
+                    <h4>Chi tiết</h4>
+                    <div id="progressList"><div class="small">Không có dữ liệu khóa cụ thể.</div></div>
+                </div>
+            </div>`;
+            const ctx = document.getElementById('progressCanvas').getContext('2d'); const labels = ['Tổng tiến độ']; const data = [0]; if(progressChart) progressChart.destroy(); progressChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:['#22b3a4'] }] }, options:{plugins:{legend:{position:'bottom'}}} ); document.getElementById('avgScoreDisplay').innerHTML = `<div class="small">Không có dữ liệu mô phỏng</div>`; }
 
         // Helpers
-        function updateCourseBars(){ try{ if(progressChart) progressChart.data.datasets[0].data = courses.map(x=>x.progress); if(progressChart) progressChart.update(); }catch(e){} }
         function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
-        function init(){ changeContent('theory'); updateCourseBars(); }
+        function init(){ changeContent('theory'); }
         init();
 
         window.changeContent = changeContent; window.openViewer = openViewer; window.closeViewer = closeViewer;
