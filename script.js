@@ -36,7 +36,7 @@ function handleLogin() {
 
 function checkAuth() {
     const loggedInUser = localStorage.getItem('loggedInUser');
-    if (!loggedInUser && window.location.pathname.includes('dashboard.html')) { window.location.href = 'login.html'; return; }
+    if (!loggedInUser && window.location.pathname.includes('dashboard.html')) { window.location.href = 'index.html'; return; }
     if (loggedInUser && window.location.pathname.includes('dashboard.html')) {
         const user = JSON.parse(loggedInUser);
         document.getElementById('welcome-msg').textContent = `Xin chào, ${user.name} (${user.role})`;
@@ -52,7 +52,7 @@ function checkAuth() {
         }
     }
 }
-function handleLogout() { localStorage.removeItem('loggedInUser'); window.location.href = 'login.html'; }
+function handleLogout() { localStorage.removeItem('loggedInUser'); window.location.href = 'index.html'; }
 
 // Bật/Tắt chế độ View as User 
 function toggleViewAsUser() {
