@@ -52,10 +52,14 @@
             <div class="brand"><div class="brand-logo"><i class='bx bxl-react'></i> CT-AI</div></div>
             <nav class="sidebar-menu">
                 <div class="menu-group-title">Góc học tập</div>
-                <button class="menu-btn active" onclick="changeContent('theory', this)"><i class='bx bx-file'></i> Lý thuyết</button>
+                <button class="menu-btn" onclick="changeContent('theory', this)"><i class='bx bx-file'></i> Lý thuyết</button>
                 <button class="menu-btn" onclick="changeContent('flashcard', this)"><i class='bx bx-card'></i> Flashcard</button>
                 <button class="menu-btn" onclick="changeContent('exercises', this)"><i class='bx bx-edit'></i> Bài tập</button>
                 <button class="menu-btn" onclick="changeContent('progress', this)"><i class='bx bx-chart'></i> Tiến độ</button>
+
+                <div class="menu-group-title" style="margin-top:12px;">Góc thi thử</div>
+                <button class="menu-btn" onclick="changeContent('mockexam', this)"><i class='bx bx-edit'></i> Thi thử</button>
+                <button class="menu-btn" onclick="changeContent('history', this)"><i class='bx bx-history'></i> Lịch sử làm bài</button>
             </nav>
         </aside>
 
@@ -82,8 +86,8 @@
     </div>
 
     <script>
-        // Minimal data and storage keys (removed course-specific data)
-        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2' };
+        // Minimal data and storage keys
+        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', history: 'ctai_history_v2' };
         const DEFAULT_FLASHCARDS = [ {front: 'Hiragana: あ', back: 'Âm "a"'}, {front: '学生', back: 'Học sinh'} ];
         const DEFAULT_QUESTIONS = [ {id:1, question:'Hiragana "あ" đọc là gì?', choices:['a','i','u','e'], answer:0, explain:'Ký tự あ đọc là "a".'} ];
 
@@ -92,11 +96,12 @@
 
         let flashcards = loadOrDefault(STORAGE_KEYS.flashcards, DEFAULT_FLASHCARDS);
         let questions = loadOrDefault(STORAGE_KEYS.questions, DEFAULT_QUESTIONS);
+        let historyItems = loadOrDefault(STORAGE_KEYS.history, []);
 
         // Content renderers
         function changeContent(page, btnEl){ document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active');
-            document.getElementById('crumb').innerText = ({theory:'Lý thuyết',flashcard:'Flashcard',exercises:'Bài tập',progress:'Tiến độ'})[page] || '';
-            if(page==='theory') renderTheory(); else if(page==='flashcard') renderFlashcards(); else if(page==='exercises') renderExercises(); else if(page==='progress') renderProgress(); }
+            document.getElementById('crumb').innerText = ({theory:'Lý thuyết',flashcard:'Flashcard',exercises:'Bài tập',progress:'Tiến độ',mockexam:'Thi thử',history:'Lịch sử làm bài'})[page] || '';
+            if(page==='theory') renderTheory(); else if(page==='flashcard') renderFlashcards(); else if(page==='exercises') renderExercises(); else if(page==='progress') renderProgress(); else if(page==='mockexam') renderMockExam(); else if(page==='history') renderHistory(); }
 
         // Viewer
         function openViewer(title, htmlContent){ document.getElementById('viewerTitle').innerText = title; document.getElementById('viewerBody').innerHTML = htmlContent; document.getElementById('viewerModal').style.display='flex'; }
@@ -157,7 +162,25 @@
         function renderQuizList(){ const area = document.getElementById('quizArea'); area.innerHTML=''; if(questions.length===0){ area.innerHTML='<div class="small">Chưa có bài tập.</div>'; return; } questions.forEach(q=>{ const qdiv=document.createElement('div'); qdiv.className='question'; const opts = q.choices.map((c, idx)=>`<div class="option" data-q="${q.id}" data-idx="${idx}" onclick="handleOptionClick(this)">${escapeHtml(c)}</div>`).join(''); qdiv.innerHTML = `<div><strong>${escapeHtml(q.question)}</strong></div><div class="options">${opts}</div><div class="explain" id="explain_${q.id}">${escapeHtml(q.explain||'')}</div>`; area.appendChild(qdiv); }); }
         function handleOptionClick(el){ const qid = Number(el.getAttribute('data-q')); const idx = Number(el.getAttribute('data-idx')); const q = questions.find(x=>x.id===qid); const parent = el.parentElement; Array.from(parent.children).forEach(opt=>{ opt.style.pointerEvents='none'; opt.classList.remove('correct','incorrect'); }); if(idx===q.answer) el.classList.add('correct'); else { el.classList.add('incorrect'); const correctEl = parent.querySelector(`[data-idx="${q.answer}"]`); if(correctEl) correctEl.classList.add('correct'); } const ex = document.getElementById('explain_'+qid); if(ex) ex.style.display='block'; }
 
-        // Progress (Chart.js) - simple placeholder without course list
+        // Mock exam (Thi thử)
+        let mockSession = null;
+        function renderMockExam(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
+            <h2 class="section-title">Thi thử</h2>
+            <div style="margin-bottom:10px;">
+                <label class="small">Số câu: </label>
+                <select id="mockCount"><option>3</option><option>5</option><option>10</option></select>
+                <button class="btn primary" onclick="startMock()">Bắt đầu</button>
+            </div>
+            <div id="mockArea"></div>`; }
+        function startMock(){ const n = Number(document.getElementById('mockCount').value); if(questions.length===0){ alert('Chưa có câu hỏi để thi.'); return; } const pool = [...questions].sort(()=>Math.random()-0.5).slice(0,n); mockSession = {pool, answers: Array(n).fill(null)}; renderMockQuestions(); }
+        function renderMockQuestions(){ const area = document.getElementById('mockArea'); area.innerHTML = ''; mockSession.pool.forEach((q, idx)=>{ const qdiv = document.createElement('div'); qdiv.className='question'; const opts = q.choices.map((c, i)=>`<div class="option" data-qi="${idx}" data-idx="${i}" onclick="mockChoose(this)">${escapeHtml(c)}</div>`).join(''); qdiv.innerHTML = `<div><strong>${escapeHtml(q.question)}</strong></div><div class="options">${opts}</div><div class="explain" id="mock_explain_${idx}">${escapeHtml(q.explain||'')}</div>`; area.appendChild(qdiv); }); area.insertAdjacentHTML('beforeend', '<div style="margin-top:12px;"><button class="btn primary" onclick="finishMock()">Nộp bài</button></div>'); }
+        function mockChoose(el){ const qi = Number(el.getAttribute('data-qi')); const ix = Number(el.getAttribute('data-idx')); const parent = el.parentElement; Array.from(parent.children).forEach(o=>o.style.pointerEvents='none'); mockSession.answers[qi]=ix; if(ix===mockSession.pool[qi].answer) el.classList.add('correct'); else { el.classList.add('incorrect'); const correctEl = parent.querySelector(`[data-idx="${mockSession.pool[qi].answer}"]`); if(correctEl) correctEl.classList.add('correct'); } const ex = document.getElementById('mock_explain_'+qi); if(ex) ex.style.display='block'; }
+        function finishMock(){ const total = mockSession.pool.length; let ok=0; mockSession.pool.forEach((q,i)=>{ if(mockSession.answers[i]===q.answer) ok++; }); const score = Math.round(100 * ok / total); historyItems.push({title:`Mock: ${total} câu`, meta:`${score}%`, time: Date.now()}); saveAndReturn(STORAGE_KEYS.history, historyItems); alert(`Bạn được ${score}% (${ok}/${total})`); changeContent('history', document.querySelector('.menu-btn[onclick*="history"]')); }
+
+        // History
+        function renderHistory(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `<h2 class="section-title">Lịch sử làm bài</h2><div id="historyList"></div>`; const list = document.getElementById('historyList'); if(historyItems.length===0){ list.innerHTML='<div class="small">Chưa có dữ liệu làm bài.</div>'; return; } const items = historyItems.slice().reverse(); items.forEach(h=>{ const div = document.createElement('div'); div.style.marginBottom='8px'; div.innerHTML = `<div style="background:var(--bg-card);padding:10px;border-radius:8px;border:1px solid var(--border-color)"><strong>${h.title}</strong><div class="small" style="margin-top:6px">${h.meta} • ${new Date(h.time).toLocaleString()}</div></div>`; list.appendChild(div); }); }
+
+        // Progress (Chart.js) - simple placeholder
         let progressChart = null;
         function renderProgress(){ const content = document.getElementById('dynamic-content'); content.innerHTML = `
             <h2 class="section-title">Tiến độ học tập</h2>
@@ -171,8 +194,7 @@
                     <h4>Chi tiết</h4>
                     <div id="progressList"><div class="small">Không có dữ liệu khóa cụ thể.</div></div>
                 </div>
-            </div>`;
-            const ctx = document.getElementById('progressCanvas').getContext('2d'); const labels = ['Tổng tiến độ']; const data = [0]; if(progressChart) progressChart.destroy(); progressChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:['#22b3a4'] }] }, options:{plugins:{legend:{position:'bottom'}}} ); document.getElementById('avgScoreDisplay').innerHTML = `<div class="small">Không có dữ liệu mô phỏng</div>`; }
+            </div>`; const ctx = document.getElementById('progressCanvas').getContext('2d'); const labels = ['Tổng tiến độ']; const data = [0]; if(progressChart) progressChart.destroy(); progressChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:['#22b3a4'] }] }, options:{plugins:{legend:{position:'bottom'}}} ); document.getElementById('avgScoreDisplay').innerHTML = `<div class="small">Không có dữ liệu mô phỏng</div>`; }
 
         // Helpers
         function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
