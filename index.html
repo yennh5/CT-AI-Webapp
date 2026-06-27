@@ -187,25 +187,6 @@
         </div>
     </div>
 
-    <script>
-        function handleLogin() {
-            const usernameInput = document.getElementById('username').value.trim();
-            const passwordInput = document.getElementById('password').value;
-            const errorMsg = document.getElementById('login-error');
-
-            errorMsg.style.color = "#d64545"; 
-
-            if (!usernameInput || !passwordInput) {
-                errorMsg.textContent = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!";
-            } else {
-                errorMsg.style.color = "#218c74";
-                errorMsg.textContent = "Đang xác thực thông tin...";
-                
-                setTimeout(() => {
-                    console.log("Submit:", usernameInput, passwordInput);
-                }, 1000);
-            }
-        }
-    </script>
+<script src="script.js"></script>
 </body>
 </html>
