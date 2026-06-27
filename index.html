@@ -127,26 +127,7 @@
         if(!pw) return;
         pw.type = pw.type === 'password' ? 'text' : 'password';
     }
-    function handleLogin(){
-        // simple validation UI (keeps existing external script.js behavior if present)
-        const user = document.getElementById('username').value.trim();
-        const pass = document.getElementById('password').value;
-        const err = document.getElementById('login-error');
-        err.textContent = '';
-        if(!user){ err.textContent = 'Vui lòng nhập email hoặc username.'; return; }
-        if(!pass){ err.textContent = 'Vui lòng nhập mật khẩu.'; return; }
-        // call existing script.js function if defined
-        if(typeof window.handleLogin === 'function' && window.handleLogin !== handleLogin){
-            // delegate to external handler
-            window.handleLogin();
-            return;
-        }
-        // fallback: show a loading state then success (replace with real auth)
-        const btn = document.querySelector('.btn-primary');
-        const prev = btn.textContent;
-        btn.textContent = 'Đang đăng nhập...'; btn.disabled = true;
-        setTimeout(()=>{ btn.textContent = prev; btn.disabled = false; err.textContent = ''; alert('Đã thực hiện giả lập đăng nhập. Thay bằng logic thật ở script.js'); }, 900);
-    }
 </script>
+<script src="script.js"></script>
 </body>
 </html>
