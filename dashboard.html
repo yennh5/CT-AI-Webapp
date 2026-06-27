@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root{--primary:#22b3a4;--bg-main:#f4f6f8;--bg-card:#fff;--text-dark:#1f2937;--text-gray:#6b7280;--border-color:#e5e7eb;}
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif}
@@ -32,18 +33,40 @@
         .flashcard .side{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;padding:18px}
         .flashcard .back{transform:rotateY(180deg)}
         .flashcard.flipped{transform:rotateY(180deg)}
-        .btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:#fff;cursor:pointer}
+        .btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:#fff;cursor:pointer;transition:all .2s}
+        .btn:hover{background:rgba(34,179,164,0.1)}
         .btn.primary{background:var(--primary);color:#fff;border:0}
+        .btn.primary:hover{background:#1a9885}
         .question{background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);margin-bottom:12px}
         .options{display:flex;flex-direction:column;gap:8px;margin-top:8px}
         .option{padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:#fff;cursor:pointer}
         .option.correct{background:#dcfce3;border-color:#86efac}
         .option.incorrect{background:#fee2e2;border-color:#fca5a5}
         .explain{margin-top:8px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color);display:none}
+        /* Chapter and Material Styles */
+        .chapter-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;margin-top:16px}
+        .chapter-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:16px;cursor:pointer;transition:all .3s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+        .chapter-card:hover{box-shadow:0 6px 16px rgba(0,0,0,.1);transform:translateY(-2px)}
+        .chapter-card.active{border-color:var(--primary);background:rgba(34,179,164,0.05)}
+        .chapter-card h3{color:var(--primary);margin-bottom:8px;font-size:1rem}
+        .chapter-card p{color:var(--text-gray);font-size:.9rem;margin-bottom:10px}
+        .material-item{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+        .material-item:hover{background:rgba(34,179,164,0.05);border-color:var(--primary)}
+        .material-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(34,179,164,0.1);font-size:1.2rem}
+        .material-info{flex:1}
+        .material-info strong{display:block;color:var(--text-dark);margin-bottom:4px}
+        .material-info span{font-size:.85rem;color:var(--text-gray)}
+        /* Modal Styles */
         @media(max-width:900px){.sidebar{display:none}}
-        /* modal */
         #viewerModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:250;align-items:center;justify-content:center;padding:18px}
-        #viewerModal .panel{width:100%;max-width:980px;background:#fff;border-radius:8px;overflow:hidden}
+        #viewerModal .panel{width:100%;max-width:1200px;background:#fff;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;max-height:90vh}
+        #viewerHeader{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee}
+        #viewerBody{flex:1;padding:12px;overflow:auto;background:#f9fafb}
+        .viewer-video{width:100%;max-height:600px}
+        .viewer-pdf{width:100%;height:600px}
+        .viewer-controls{padding:12px;background:#fff;border-top:1px solid #eee;display:flex;gap:8px;justify-content:center}
+        .pdf-nav{display:flex;align-items:center;gap:8px}
+        .pdf-nav input{width:60px;padding:6px;border:1px solid var(--border-color);border-radius:4px}
     </style>
 </head>
 <body>
@@ -74,19 +97,85 @@
         </main>
     </div>
 
-    <!-- Viewer modal -->
+    <!-- Media Viewer modal -->
     <div id="viewerModal">
         <div class="panel">
-            <div style="padding:12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;">
+            <div id="viewerHeader">
                 <strong id="viewerTitle">Xem tài liệu</strong>
-                <button onclick="closeViewer()" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button>
+                <button onclick="closeViewer()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
             </div>
-            <div id="viewerBody" style="padding:12px;min-height:240px;"></div>
+            <div id="viewerBody" style="flex:1;overflow:auto;padding:12px;"></div>
+            <div id="viewerControls" class="viewer-controls" style="display:none;"></div>
         </div>
     </div>
 
     <script>
-        // Minimal data and storage keys
+        // Initialize PDF.js
+        if(typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Sample data: Chapters with materials
+        const CHAPTERS_DATA = [
+            {
+                id: 1,
+                name: 'CHƯƠNG 1: Giới thiệu cơ bản',
+                materials: [
+                    { id: 1, name: 'Bài 1: Bảng Hiragana', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 2, name: 'Video giới thiệu', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
+                ]
+            },
+            {
+                id: 2,
+                name: 'CHƯƠNG 2: Ngữ pháp cơ bản',
+                materials: [
+                    { id: 3, name: 'Bài giảng 1', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 4, name: 'Bài tập thực hành', type: 'xlsx', url: 'https://example.com/baitap.xlsx' }
+                ]
+            },
+            {
+                id: 3,
+                name: 'CHƯƠNG 3: Phát âm & Tones',
+                materials: [
+                    { id: 5, name: 'Video phát âm', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+                    { id: 6, name: 'Tài liệu tham khảo', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                ]
+            },
+            {
+                id: 4,
+                name: 'CHƯƠNG 4: Hội thoại thường ngày',
+                materials: [
+                    { id: 7, name: 'Bài hội thoại 1', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+                    { id: 8, name: 'Script hội thoại', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                ]
+            },
+            {
+                id: 5,
+                name: 'CHƯƠNG 5: Văn hóa & Quán tục',
+                materials: [
+                    { id: 9, name: 'Tài liệu văn hóa', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 10, name: 'Video tài liệu', type: 'mp4', url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' }
+                ]
+            },
+            {
+                id: 6,
+                name: 'CHƯƠNG 6: Ôn tập & Luyện thi',
+                materials: [
+                    { id: 11, name: 'Đề ôn tập', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                    { id: 12, name: 'Bộ câu hỏi thử', type: 'xlsx', url: 'https://example.com/cauhoi.xlsx' }
+                ]
+            },
+            {
+                id: 7,
+                name: 'CHƯƠNG 7: Chuyên đề nâng cao',
+                materials: [
+                    { id: 13, name: 'Bài giảng nâng cao', type: 'pptx', url: 'https://example.com/nangcao.pptx' },
+                    { id: 14, name: 'Kỹ năng thi JLPT', type: 'pdf', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
+                ]
+            }
+        ];
+
+        // Storage and initial data
         const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', history: 'ctai_history_v2' };
         const DEFAULT_FLASHCARDS = [ {front: 'Hiragana: あ', back: 'Âm "a"'}, {front: '学生', back: 'Học sinh'} ];
         const DEFAULT_QUESTIONS = [ {id:1, question:'Hiragana "あ" đọc là gì?', choices:['a','i','u','e'], answer:0, explain:'Ký tự あ đọc là "a".'} ];
@@ -97,6 +186,7 @@
         let flashcards = loadOrDefault(STORAGE_KEYS.flashcards, DEFAULT_FLASHCARDS);
         let questions = loadOrDefault(STORAGE_KEYS.questions, DEFAULT_QUESTIONS);
         let historyItems = loadOrDefault(STORAGE_KEYS.history, []);
+        let currentChapter = null;
 
         // Content renderers
         function changeContent(page, btnEl){
@@ -121,37 +211,147 @@
             else if(page==='history') renderHistory();
         }
 
-        // Viewer
-        function openViewer(title, htmlContent){
-            document.getElementById('viewerTitle').innerText = title;
-            document.getElementById('viewerBody').innerHTML = htmlContent;
-            document.getElementById('viewerModal').style.display='flex';
-        }
-        function closeViewer(){
-            document.getElementById('viewerModal').style.display='none';
-            document.getElementById('viewerBody').innerHTML='';
-        }
-
+        // Theory with Chapters
         function renderTheory(){
             const content = document.getElementById('dynamic-content');
             content.innerHTML = `
                 <h2 class="section-title">Lý thuyết & Tài liệu</h2>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">
-                        <h4>Bảng chữ cái Hiragana</h4>
-                        <p class="small">Tài liệu tổng hợp - PDF mẫu</p>
-                        <div style="margin-top:10px;display:flex;gap:8px;">
-                            <button class="btn" onclick="openViewer('Bảng chữ cái Hiragana','<iframe src=&quot;https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf&quot; style=&quot;width:100%;height:500px;border:none;&quot;></iframe>')">Xem PDF</button>
-                        </div>
+                <p class="small" style="margin-bottom:16px;">Chọn một chương để xem tài liệu học tập</p>
+                <div class="chapter-grid" id="chapterGrid"></div>`;
+            
+            const grid = document.getElementById('chapterGrid');
+            CHAPTERS_DATA.forEach(chapter => {
+                const card = document.createElement('div');
+                card.className = 'chapter-card';
+                card.onclick = () => showChapterMaterials(chapter);
+                card.innerHTML = `
+                    <h3><i class='bx bx-book'></i> ${chapter.name}</h3>
+                    <p>${chapter.materials.length} tài liệu</p>
+                    <button class="btn primary" style="width:100%;margin-top:8px;">Xem chi tiết</button>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function showChapterMaterials(chapter){
+            currentChapter = chapter;
+            const content = document.getElementById('dynamic-content');
+            content.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                    <button class="btn" onclick="renderTheory()"><i class='bx bx-arrow-back'></i> Quay lại</button>
+                    <h2 class="section-title" style="margin:0;">${chapter.name}</h2>
+                </div>
+                <div id="materialsContainer"></div>`;
+            
+            const container = document.getElementById('materialsContainer');
+            if(chapter.materials.length === 0){
+                container.innerHTML = '<p class="small">Chưa có tài liệu.</p>';
+                return;
+            }
+
+            chapter.materials.forEach(material => {
+                const item = document.createElement('div');
+                item.className = 'material-item';
+                const icons = {
+                    'pdf': '📄',
+                    'mp4': '🎬',
+                    'pptx': '📊',
+                    'xlsx': '📈'
+                };
+                item.innerHTML = `
+                    <div class="material-icon">${icons[material.type] || '📎'}</div>
+                    <div class="material-info">
+                        <strong>${material.name}</strong>
+                        <span>${material.type.toUpperCase()}</span>
                     </div>
-                    <div style="width:320px;background:var(--bg-card);border:1px solid var(--border-color);padding:12px;border-radius:10px;">
-                        <h4>Ngữ pháp cơ bản</h4>
-                        <p class="small">Tóm tắt ngữ pháp</p>
-                        <div style="margin-top:10px;display:flex;gap:8px;">
-                            <button class="btn" onclick="openViewer('Ngữ pháp cơ bản','<div style=&quot;padding:12px;max-height:520px;overflow:auto;&quot;><h3>Ngữ pháp: は (ha)</h3><p>Được dùng làm đánh dấu chủ ngữ trong câu.</p><h3>Ngữ pháp: を (wo)</h3><p>Được dùng làm đánh dấu tân ngữ trực tiếp.</p></div>')">Xem chi tiết</button>
-                        </div>
-                    </div>
-                </div>`;
+                    <i class='bx bx-chevron-right' style="font-size:1.5rem;color:var(--text-gray);"></i>`;
+                item.onclick = () => openMediaViewer(material);
+                container.appendChild(item);
+            });
+        }
+
+        // Media Viewer
+        let pdfDoc = null;
+        let currentPdfPage = 1;
+
+        function openMediaViewer(material){
+            const title = material.name;
+            const body = document.getElementById('viewerBody');
+            const controls = document.getElementById('viewerControls');
+            const header = document.getElementById('viewerHeader');
+
+            document.getElementById('viewerTitle').innerText = title;
+            body.innerHTML = '';
+            controls.innerHTML = '';
+            controls.style.display = 'none';
+
+            if(material.type === 'mp4'){
+                body.innerHTML = `<video class="viewer-video" controls><source src="${material.url}" type="video/mp4">Trình duyệt của bạn không hỗ trợ video.</video>`;
+            }
+            else if(material.type === 'pdf'){
+                body.innerHTML = '<canvas id="pdfCanvas" style="max-width:100%;"></canvas><p id="pdfStatus" style="text-align:center;margin-top:10px;"></p>';
+                controls.innerHTML = `
+                    <div class="pdf-nav">
+                        <button class="btn" onclick="previousPage()">&lt; Trước</button>
+                        <span>Trang <input id="pageNum" type="number" value="1"> / <span id="pageCount">-</span></span>
+                        <button class="btn" onclick="nextPage()">Sau &gt;</button>
+                    </div>`;
+                controls.style.display = 'flex';
+                loadPdf(material.url);
+            }
+            else if(material.type === 'pptx' || material.type === 'xlsx'){
+                body.innerHTML = `<div style="text-align:center;padding:40px;"><p>Tài liệu ${material.type.toUpperCase()}</p><p class="small">Tính năng xem trực tuyến sẽ được cập nhật</p><a href="${material.url}" class="btn primary" style="display:inline-block;margin-top:16px;">Tải xuống</a></div>`;
+            }
+
+            document.getElementById('viewerModal').style.display = 'flex';
+        }
+
+        function loadPdf(url){
+            if(typeof pdfjsLib === 'undefined'){
+                document.getElementById('viewerBody').innerHTML = '<p>Không thể tải PDF. Vui lòng tải xuống.</p>';
+                return;
+            }
+            pdfjsLib.getDocument(url).promise.then(pdf => {
+                pdfDoc = pdf;
+                document.getElementById('pageCount').innerText = pdf.numPages;
+                currentPdfPage = 1;
+                renderPdfPage(1);
+            }).catch(err => {
+                console.error('PDF Error:', err);
+                document.getElementById('viewerBody').innerHTML = '<p>Lỗi khi tải PDF</p>';
+            });
+        }
+
+        function renderPdfPage(pageNum){
+            if(!pdfDoc) return;
+            pdfDoc.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.getElementById('pdfCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+                    currentPdfPage = pageNum;
+                    document.getElementById('pageNum').value = pageNum;
+                });
+            });
+        }
+
+        function nextPage(){
+            if(pdfDoc && currentPdfPage < pdfDoc.numPages){
+                renderPdfPage(currentPdfPage + 1);
+            }
+        }
+
+        function previousPage(){
+            if(currentPdfPage > 1){
+                renderPdfPage(currentPdfPage - 1);
+            }
+        }
+
+        function closeViewer(){
+            document.getElementById('viewerModal').style.display = 'none';
+            document.getElementById('viewerBody').innerHTML = '';
+            pdfDoc = null;
         }
 
         // Flashcards
@@ -373,19 +573,12 @@
             });
         }
 
-        // Helpers
-        function escapeHtml(s){
-            if(!s) return '';
-            return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-        }
-
         function init(){
             changeContent('theory');
         }
         init();
 
         window.changeContent = changeContent;
-        window.openViewer = openViewer;
         window.closeViewer = closeViewer;
     </script>
 </body>
