@@ -551,7 +551,11 @@
         function shuffleFcCards(){
             const key = String(selectedFcChapter);
             if(!Array.isArray(fcChapters[key]) || !fcChapters[key].length) return;
-            fcChapters[key] = fcChapters[key].sort(() => Math.random() - 0.5);
+            const arr = fcChapters[key];
+            for(let i = arr.length - 1; i > 0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
             saveFcChapters();
             fcChapterIndex = 0;
             renderFcCardArea();
@@ -599,6 +603,7 @@
 
         function downloadFcTemplate(){
             const rows = ['chapter,front,back', '1,AI (Artificial Intelligence),Trí tuệ nhân tạo', '2,Test Oracle,Cơ chế xác định kết quả kiểm thử là đúng hay sai', '3,Overfitting,Hiện tượng mô hình học quá khớp với dữ liệu huấn luyện'];
+            // \uFEFF = UTF-8 BOM, ensures correct encoding when opened in Excel/Sheets
             const csv = '\uFEFF' + rows.join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -613,7 +618,7 @@
             for(let i = 0; i < line.length; i++){
                 const ch = line[i];
                 if(ch === '"'){
-                    if(inQuotes && line[i+1] === '"'){ current += '"'; i++; }
+                    if(inQuotes && i + 1 < line.length && line[i+1] === '"'){ current += '"'; i++; }
                     else { inQuotes = !inQuotes; }
                 } else if(ch === ',' && !inQuotes){
                     result.push(current); current = '';
@@ -638,7 +643,7 @@
                 const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
                 if(lines.length < 2){ alert('File CSV không có dữ liệu.'); return; }
 
-                const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const header = parseCSVLine(lines[0].toLowerCase());
                 const frontIdx = header.indexOf('front');
                 const backIdx = header.indexOf('back');
                 const chapterIdx = header.indexOf('chapter');
