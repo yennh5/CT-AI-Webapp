@@ -112,6 +112,7 @@
         <main class="main-content">
             <header class="top-header">
                 <div class="breadcrumb">Trang chủ / <span id="crumb">Lý thuyết</span></div>
+                <div id="authHeader" style="font-size:.9rem;display:flex;align-items:center;gap:12px;"></div>
             </header>
 
             <div class="content-scroll-area">
@@ -207,13 +208,21 @@
 
         // Storage and initial data
         const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', history: 'ctai_history_v2', exams: 'ctai_exams_v2' };
+        const FC_CHAPTERS_KEY = 'ctai_fc_chapters_v1';
         const DEFAULT_FLASHCARDS = [ {front: 'Hiragana: あ', back: 'Âm "a"'}, {front: '学生', back: 'Học sinh'} ];
+        const DEFAULT_FC_CHAPTERS = {
+            "1": [ {front:'AI (Artificial Intelligence)', back:'Trí tuệ nhân tạo - công nghệ mô phỏng khả năng tư duy của con người'}, {front:'Machine Learning', back:'Học máy - nhánh của AI cho phép hệ thống tự học từ dữ liệu'}, {front:'Test Oracle', back:'Cơ chế xác định kết quả kiểm thử là đúng hay sai'} ],
+            "2":[],"3":[],"4":[],"5":[],"6":[],"7":[]
+        };
         const DEFAULT_QUESTIONS = [ {id:1, question:'Hiragana "あ" đọc là gì?', choices:['a','i','u','e'], answer:0, explain:'Ký tự あ đọc là "a".'} ];
 
         function loadOrDefault(key, def){ try{ const raw = localStorage.getItem(key); return raw?JSON.parse(raw):(saveAndReturn(key, def), def); }catch(e){console.error(e);return def;} }
         function saveAndReturn(key, value){ localStorage.setItem(key, JSON.stringify(value)); return value; }
 
         let flashcards = loadOrDefault(STORAGE_KEYS.flashcards, DEFAULT_FLASHCARDS);
+        let fcChapters = loadOrDefault(FC_CHAPTERS_KEY, DEFAULT_FC_CHAPTERS);
+        let selectedFcChapter = 1;
+        let fcChapterIndex = 0;
         let questions = loadOrDefault(STORAGE_KEYS.questions, DEFAULT_QUESTIONS);
         let historyItems = loadOrDefault(STORAGE_KEYS.history, []);
         let exerciseExams = loadOrDefault(STORAGE_KEYS.exams, []);
@@ -441,69 +450,228 @@
             pdfDoc = null;
         }
 
-        // Flashcards
-        let fcIndex = 0;
-        function renderFlashcards(){
+        // Flashcards – chapter-based
+        function getFcCards(chapterNo){
+            const key = String(chapterNo);
+            return Array.isArray(fcChapters[key]) ? fcChapters[key] : [];
+        }
+        function saveFcChapters(){
+            saveAndReturn(FC_CHAPTERS_KEY, fcChapters);
+        }
+        function isFlashcardAdmin(){
+            const user = getLoggedInUser();
+            return !!(user && user.role === 'Admin');
+        }
+
+        function renderFlashcards(chapterId){
+            selectedFcChapter = Number(chapterId) || selectedFcChapter || 1;
             const content = document.getElementById('dynamic-content');
+            const chapterButtons = Array.from({ length: 7 }, (_, i) => {
+                const n = i + 1;
+                return `<button class="chapter-chip ${n === selectedFcChapter ? 'active' : ''}" onclick="renderFlashcards(${n})">Chương ${n}</button>`;
+            }).join('');
+            const hint = isFlashcardAdmin()
+                ? 'Admin có thể tạo và import flashcard bằng các nút bên phải.'
+                : 'Đăng nhập tài khoản Admin để tạo / import flashcard.';
             content.innerHTML = `
                 <h2 class="section-title">Flashcard</h2>
-                <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
-                    <div class="card-viewport">
-                        <div id="flashcard" class="flashcard" onclick="flipCard()">
-                            <div class="side front" id="fcFront"></div>
-                            <div class="side back" id="fcBack"></div>
-                        </div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn" onclick="prevCard()">Prev</button>
-                            <button class="btn" onclick="nextCard()">Next</button>
-                        </div>
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn primary" onclick="markKnown()">Đã nhớ</button>
-                            <button class="btn" onclick="shuffleFlashcards()">Shuffle</button>
-                        </div>
-                    </div>
+                <p class="small" style="margin-bottom:12px;">${hint}</p>
+                <div class="exercise-layout">
+                    <aside class="exercise-chapter-menu">${chapterButtons}</aside>
+                    <section class="exercise-panel" id="fcChapterPanel"></section>
                 </div>`;
-            fcIndex=0;
-            renderFlashcardCard();
+            renderFcChapterPanel();
         }
-        function renderFlashcardCard(){
-            const el = document.getElementById('flashcard');
-            if(!el) return;
-            if(flashcards.length===0){
-                el.innerHTML='<div style="padding:16px;">Chưa có flashcard.</div>';
+
+        function renderFcChapterPanel(){
+            const panel = document.getElementById('fcChapterPanel');
+            if(!panel) return;
+            fcChapterIndex = 0;
+            const adminToolbar = isFlashcardAdmin() ? `
+                <button class="btn primary" onclick="renderCreateFlashcardForm(${selectedFcChapter})"><i class='bx bx-plus'></i> Tạo flashcard</button>
+                <button class="btn" onclick="downloadFcTemplate()"><i class='bx bx-download'></i> Tải template</button>
+                <label class="btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+                    <i class='bx bx-upload'></i> Import CSV
+                    <input type="file" accept=".csv" style="display:none;" onchange="handleFcImport(event)">
+                </label>` : '';
+            panel.innerHTML = `
+                <div class="exercise-admin-toolbar">
+                    <h3 style="margin:0;">Flashcard – Chương ${selectedFcChapter}</h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">${adminToolbar}</div>
+                </div>
+                <div id="fcCardArea"></div>`;
+            renderFcCardArea();
+        }
+
+        function renderFcCardArea(){
+            const area = document.getElementById('fcCardArea');
+            if(!area) return;
+            const cards = getFcCards(selectedFcChapter);
+            if(cards.length === 0){
+                area.innerHTML = '<p class="small" style="margin-top:12px;">Chưa có flashcard nào cho chương này.</p>';
                 return;
             }
-            const card = flashcards[fcIndex];
-            document.getElementById('fcFront').innerText = card.front;
-            document.getElementById('fcBack').innerText = card.back;
+            if(fcChapterIndex >= cards.length) fcChapterIndex = 0;
+            const card = cards[fcChapterIndex];
+            area.innerHTML = `
+                <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-top:16px;">
+                    <div>
+                        <div id="fcCard" class="flashcard" onclick="flipFcCard()">
+                            <div class="side front" id="fcFront">${escapeHtml(card.front)}</div>
+                            <div class="side back" id="fcBack">${escapeHtml(card.back)}</div>
+                        </div>
+                        <p class="small" style="text-align:center;margin-top:8px;">${fcChapterIndex + 1} / ${cards.length} &nbsp;·&nbsp; Click thẻ để lật</p>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;">
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn" onclick="prevFcCard()">← Prev</button>
+                            <button class="btn" onclick="nextFcCard()">Next →</button>
+                        </div>
+                        <button class="btn primary" onclick="shuffleFcCards()">🔀 Shuffle</button>
+                    </div>
+                </div>`;
         }
-        function flipCard(){
-            const el=document.getElementById('flashcard');
+
+        function flipFcCard(){
+            const el = document.getElementById('fcCard');
             if(el) el.classList.toggle('flipped');
         }
-        function nextCard(){
-            if(flashcards.length===0) return;
-            fcIndex=(fcIndex+1)%flashcards.length;
-            document.getElementById('flashcard').classList.remove('flipped');
-            renderFlashcardCard();
+        function nextFcCard(){
+            const cards = getFcCards(selectedFcChapter);
+            if(!cards.length) return;
+            fcChapterIndex = (fcChapterIndex + 1) % cards.length;
+            renderFcCardArea();
         }
-        function prevCard(){
-            if(flashcards.length===0) return;
-            fcIndex=(fcIndex-1+flashcards.length)%flashcards.length;
-            document.getElementById('flashcard').classList.remove('flipped');
-            renderFlashcardCard();
+        function prevFcCard(){
+            const cards = getFcCards(selectedFcChapter);
+            if(!cards.length) return;
+            fcChapterIndex = (fcChapterIndex - 1 + cards.length) % cards.length;
+            renderFcCardArea();
         }
-        function markKnown(){
-            alert('Đã đánh dấu là nhớ.');
-            renderFlashcardCard();
+        function shuffleFcCards(){
+            const key = String(selectedFcChapter);
+            if(!Array.isArray(fcChapters[key]) || !fcChapters[key].length) return;
+            fcChapters[key] = fcChapters[key].sort(() => Math.random() - 0.5);
+            saveFcChapters();
+            fcChapterIndex = 0;
+            renderFcCardArea();
         }
-        function shuffleFlashcards(){
-            flashcards = flashcards.sort(()=>Math.random()-0.5);
-            saveAndReturn(STORAGE_KEYS.flashcards, flashcards);
-            fcIndex = 0;
-            renderFlashcardCard();
+
+        function renderCreateFlashcardForm(chapterNo){
+            if(!isFlashcardAdmin()){ alert('Chỉ Admin mới có thể tạo flashcard.'); return; }
+            selectedFcChapter = Number(chapterNo) || 1;
+            const panel = document.getElementById('fcChapterPanel');
+            const chapterOptions = Array.from({ length: 7 }, (_, i) => {
+                const c = i + 1;
+                return `<option value="${c}" ${c === selectedFcChapter ? 'selected' : ''}>Chương ${c}</option>`;
+            }).join('');
+            panel.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                    <h3 style="margin:0;">Tạo flashcard mới</h3>
+                    <button class="btn" onclick="renderFcChapterPanel()"><i class='bx bx-arrow-back'></i> Quay lại</button>
+                </div>
+                <form class="exercise-form" onsubmit="handleCreateFlashcard(event)">
+                    <label for="fcNewChapter">Chương</label>
+                    <select id="fcNewChapter">${chapterOptions}</select>
+                    <label for="fcNewFront">Mặt trước (từ khóa / câu hỏi)</label>
+                    <input id="fcNewFront" type="text" placeholder="Nhập nội dung mặt trước" required>
+                    <label for="fcNewBack">Mặt sau (đáp án / giải thích)</label>
+                    <textarea id="fcNewBack" placeholder="Nhập nội dung mặt sau" required style="min-height:100px;resize:vertical;"></textarea>
+                    <button class="btn primary" type="submit">Lưu flashcard</button>
+                </form>`;
+        }
+
+        function handleCreateFlashcard(event){
+            event.preventDefault();
+            if(!isFlashcardAdmin()){ alert('Chỉ Admin mới có thể tạo flashcard.'); return; }
+            const chapter = Number(document.getElementById('fcNewChapter').value);
+            const front = document.getElementById('fcNewFront').value.trim();
+            const back = document.getElementById('fcNewBack').value.trim();
+            if(!front || !back){ alert('Vui lòng nhập đầy đủ mặt trước và mặt sau.'); return; }
+            const key = String(chapter);
+            if(!Array.isArray(fcChapters[key])) fcChapters[key] = [];
+            fcChapters[key].push({ front, back });
+            saveFcChapters();
+            selectedFcChapter = chapter;
+            renderFlashcards(chapter);
+            alert('✅ Đã tạo flashcard thành công!');
+        }
+
+        function downloadFcTemplate(){
+            const rows = ['chapter,front,back', '1,AI (Artificial Intelligence),Trí tuệ nhân tạo', '2,Test Oracle,Cơ chế xác định kết quả kiểm thử là đúng hay sai', '3,Overfitting,Hiện tượng mô hình học quá khớp với dữ liệu huấn luyện'];
+            const csv = '\uFEFF' + rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'flashcard_template.csv'; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function parseCSVLine(line){
+            const result = [];
+            let current = '', inQuotes = false;
+            for(let i = 0; i < line.length; i++){
+                const ch = line[i];
+                if(ch === '"'){
+                    if(inQuotes && line[i+1] === '"'){ current += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if(ch === ',' && !inQuotes){
+                    result.push(current); current = '';
+                } else { current += ch; }
+            }
+            result.push(current);
+            return result.map(s => s.trim());
+        }
+
+        function handleFcImport(event){
+            if(!isFlashcardAdmin()){ alert('Chỉ Admin mới có thể import flashcard.'); return; }
+            const file = event.target.files[0];
+            event.target.value = '';
+            if(!file) return;
+            if(!file.name.toLowerCase().endsWith('.csv')){
+                alert('❌ Vui lòng chọn file CSV (.csv). Hãy tải template để biết định dạng đúng.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e){
+                const text = e.target.result;
+                const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+                if(lines.length < 2){ alert('File CSV không có dữ liệu.'); return; }
+
+                const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const frontIdx = header.indexOf('front');
+                const backIdx = header.indexOf('back');
+                const chapterIdx = header.indexOf('chapter');
+
+                if(frontIdx === -1 || backIdx === -1){
+                    alert('❌ File CSV thiếu cột bắt buộc "front" hoặc "back".\nVui lòng tải template và làm theo đúng định dạng.');
+                    return;
+                }
+
+                let successCount = 0, failCount = 0;
+                for(let i = 1; i < lines.length; i++){
+                    const line = lines[i].trim();
+                    if(!line) continue;
+                    const cols = parseCSVLine(line);
+                    const front = (cols[frontIdx] || '').trim();
+                    const back = (cols[backIdx] || '').trim();
+                    if(!front || !back){ failCount++; continue; }
+
+                    let targetChapter = selectedFcChapter;
+                    if(chapterIdx !== -1 && cols[chapterIdx]){
+                        const p = Number(cols[chapterIdx]);
+                        if(p >= 1 && p <= 7) targetChapter = p;
+                    }
+                    const key = String(targetChapter);
+                    if(!Array.isArray(fcChapters[key])) fcChapters[key] = [];
+                    fcChapters[key].push({ front, back });
+                    successCount++;
+                }
+                saveFcChapters();
+                renderFlashcards(selectedFcChapter);
+                alert(`Import hoàn tất!\n✅ Thành công: ${successCount} flashcard\n❌ Bỏ qua (thiếu dữ liệu): ${failCount} dòng`);
+            };
+            reader.readAsText(file, 'UTF-8');
         }
 
         // Exercises
@@ -747,7 +915,25 @@
             });
         }
 
+        function renderAuthHeader(){
+            const user = getLoggedInUser();
+            const el = document.getElementById('authHeader');
+            if(!el) return;
+            if(user){
+                el.innerHTML = `<span style="color:var(--text-gray);">Xin chào, <strong>${escapeHtml(user.name)}</strong> (${escapeHtml(user.role)})</span>
+                    <button class="btn" onclick="handleDashboardLogout()" style="padding:6px 12px;font-size:.85rem;">Đăng xuất</button>`;
+            } else {
+                el.innerHTML = `<span style="color:var(--text-gray);">Bạn chưa đăng nhập</span>
+                    <a href="index.html" class="btn primary" style="padding:6px 12px;font-size:.85rem;text-decoration:none;">Đăng nhập</a>`;
+            }
+        }
+        function handleDashboardLogout(){
+            localStorage.removeItem('loggedInUser');
+            window.location.href = 'index.html';
+        }
+
         function init(){
+            renderAuthHeader();
             changeContent('theory');
         }
         init();
