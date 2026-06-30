@@ -155,8 +155,8 @@
             /* Layout wrapper */
             .layout-wrapper {
                 flex-direction: column;
-                height: 100dvh;
                 height: 100vh;
+                height: 100dvh;
             }
 
             /* Bottom Navigation Bar */
@@ -1264,14 +1264,9 @@
 
         function init(){
             renderAuthHeader();
-            // Auto-load trang đầu tiên
-            changeContent('theory', null);
-            // Mark first sidebar button active
+            // Auto-load trang đầu tiên, đồng thời đánh dấu active cho sidebar và bottom nav
             const firstBtn = document.querySelector('.menu-btn');
-            if(firstBtn) firstBtn.classList.add('active');
-            // Mark first bottom nav button active
-            const firstBotBtn = document.querySelector('.bottom-nav-item[data-page="theory"]');
-            if(firstBotBtn) firstBotBtn.classList.add('active');
+            changeContent('theory', firstBtn);
         }
         init();
 
