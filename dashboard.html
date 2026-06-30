@@ -233,6 +233,12 @@
         function saveExerciseExams(){
             saveAndReturn(STORAGE_KEYS.exams, exerciseExams);
         }
+        function generateExamId(){
+            if(window.crypto && typeof window.crypto.randomUUID === 'function'){
+                return window.crypto.randomUUID();
+            }
+            return `exam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        }
         function escapeHtml(value){
             return String(value || '')
                 .replace(/&/g, '&amp;')
@@ -240,6 +246,20 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+        function sanitizeExamHtml(rawHtml){
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(String(rawHtml || ''), 'text/html');
+            doc.querySelectorAll('script, iframe, object, embed').forEach(node => node.remove());
+            doc.querySelectorAll('*').forEach(node => {
+                Array.from(node.attributes).forEach(attr => {
+                    const key = attr.name.toLowerCase();
+                    const val = String(attr.value || '').trim().toLowerCase();
+                    if(key.startsWith('on')) node.removeAttribute(attr.name);
+                    if((key === 'href' || key === 'src') && val.startsWith('javascript:')) node.removeAttribute(attr.name);
+                });
+            });
+            return doc.body.innerHTML;
         }
 
         // Content renderers
@@ -584,7 +604,7 @@
 
             const now = new Date().toISOString();
             const newExam = {
-                id: `exam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                id: generateExamId(),
                 chapter,
                 title,
                 htmlContent,
@@ -607,10 +627,10 @@
             previewArea.innerHTML = `
                 <div class="exercise-preview-wrap">
                     <div class="exercise-preview-head">${escapeHtml(exam.title)} - Chương ${exam.chapter}</div>
-                    <iframe id="exercisePreviewFrame" class="exercise-preview-frame" sandbox="allow-forms"></iframe>
+                    <iframe id="exercisePreviewFrame" class="exercise-preview-frame" sandbox></iframe>
                 </div>`;
 
-            document.getElementById('exercisePreviewFrame').srcdoc = exam.htmlContent || '<p>Nội dung đề trống.</p>';
+            document.getElementById('exercisePreviewFrame').srcdoc = sanitizeExamHtml(exam.htmlContent || '<p>Nội dung đề trống.</p>');
         }
 
         // Mock exam (Thi thử)
