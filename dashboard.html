@@ -88,7 +88,7 @@
         .exercise-form input,.exercise-form select,.exercise-form textarea{padding:10px;border:1px solid var(--border-color);border-radius:8px;font-size:.95rem}
         .exercise-form textarea{min-height:200px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
         .code-textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.88rem;min-height:220px;background:#1e1e2e;color:#cdd6f4;border-color:#45475a;border-radius:8px;padding:12px}
-        .code-textarea::placeholder{color:#6c7086}
+        .code-textarea::placeholder{color:#a6adc8}
         .form-preview-wrap{margin-top:10px;border:2px dashed var(--primary);border-radius:8px;overflow:hidden}
         .form-preview-head{padding:8px 12px;background:rgba(34,179,164,.08);font-size:.85rem;font-weight:600;color:var(--primary)}
         .form-preview-frame{width:100%;height:320px;border:none;display:block}
@@ -742,8 +742,10 @@
             grid.className = 'exam-card-grid';
             examsByChapter.forEach(exam => {
                 const item = document.createElement('div');
-                const createdLabel = new Date(exam.createdAt || exam.updatedAt || Date.now()).toLocaleString('vi-VN');
-                const updatedLabel = new Date(exam.updatedAt || exam.createdAt || Date.now()).toLocaleString('vi-VN');
+                const createdAtValue = exam.createdAt;
+                const updatedAtValue = exam.updatedAt;
+                const createdLabel = createdAtValue ? new Date(createdAtValue).toLocaleString('vi-VN') : 'N/A';
+                const updatedLabel = updatedAtValue ? new Date(updatedAtValue).toLocaleString('vi-VN') : 'N/A';
                 item.className = 'exam-card';
                 item.innerHTML = `
                     <div class="exam-card-title">${escapeHtml(exam.title)}</div>
@@ -799,7 +801,7 @@
                     <label for="examChapter">Chương</label>
                     <select id="examChapter">${chapterOptions}</select>
                     <label for="examHtmlContent">Nội dung HTML đề thi</label>
-                    <textarea id="examHtmlContent" class="code-textarea" placeholder="&lt;h2&gt;Đề thi chương ${selectedExerciseChapter}&lt;/h2&gt;&#10;&lt;p&gt;Nội dung câu hỏi...&lt;/p&gt;" required></textarea>
+                    <textarea id="examHtmlContent" class="code-textarea" placeholder="<h2>Đề thi chương ${selectedExerciseChapter}</h2>\n<p>Nội dung câu hỏi...</p>" required></textarea>
                     <button class="btn" type="button" onclick="previewExamHtml('examHtmlContent','examCreatePreviewFrame')">👁️ Preview trực tiếp</button>
                     <div class="form-preview-wrap">
                         <div class="form-preview-head">Xem trước HTML</div>
@@ -868,7 +870,7 @@
                     <label for="editExamChapter">Chương</label>
                     <select id="editExamChapter">${chapterOptions}</select>
                     <label for="editExamHtmlContent">Nội dung HTML đề thi</label>
-                    <textarea id="editExamHtmlContent" class="code-textarea" placeholder="&lt;h2&gt;Đề thi&lt;/h2&gt;&#10;&lt;p&gt;Nội dung câu hỏi...&lt;/p&gt;" required>${escapeHtml(exam.htmlContent)}</textarea>
+                    <textarea id="editExamHtmlContent" class="code-textarea" placeholder="<h2>Đề thi</h2>\n<p>Nội dung câu hỏi...</p>" required>${escapeHtml(exam.htmlContent)}</textarea>
                     <button class="btn" type="button" onclick="previewExamHtml('editExamHtmlContent','examEditPreviewFrame')">👁️ Preview</button>
                     <div class="form-preview-wrap">
                         <div class="form-preview-head">Xem trước HTML</div>
