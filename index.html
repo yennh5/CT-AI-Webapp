@@ -51,7 +51,7 @@
             position:absolute; left:12px; top:50%; transform:translateY(-50%); width:18px; height:18px; display:flex; align-items:center; justify-content:center; color:var(--accent-2);
         }
         .input-group input{
-            width:100%; padding:14px 14px 14px 44px; border-radius:10px; border:1px solid #e6eef0; background:#fbffff; color:#0b2530; font-size:14px; outline:none; transition:box-shadow .18s, border-color .18s;
+            width:100%; padding:14px 14px 14px 44px; border-radius:10px; border:1px solid #e6eef0; background:#fbffff; color:#0b2530; font-size:16px; outline:none; transition:box-shadow .18s, border-color .18s;
         }
         .input-group input:focus{ box-shadow: 0 8px 20px var(--focus); border-color:var(--accent-2); }
         .input-group .eye-btn{ position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; padding:6px; cursor:pointer; display:flex; align-items:center; color:var(--muted) }
@@ -69,7 +69,10 @@
         .error-msg{ color:#e44b4b; font-size:13px; min-height:18px; margin-top:8px }
 
         /* Responsive */
-        @media (max-width:480px){ body{ padding:18px } .card{ padding:20px } }
+        @media (max-width:480px){
+            body{ padding:0; align-items:flex-start; }
+            .card{ padding:24px 18px; border-radius:0; max-width:100%; min-height:100vh; box-shadow:none; }
+        }
     </style>
 </head>
 <body>
