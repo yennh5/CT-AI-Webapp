@@ -2,7 +2,11 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#22b3a4">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Hệ thống luyện thi CT-AI - Góc học tập</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
@@ -104,6 +108,183 @@
         .viewer-controls{padding:12px;background:#fff;border-top:1px solid #eee;display:flex;gap:8px;justify-content:center}
         .pdf-nav{display:flex;align-items:center;gap:8px}
         .pdf-nav input{width:60px;padding:6px;border:1px solid var(--border-color);border-radius:4px}
+
+        /* ===== MOBILE BOTTOM NAV LAYOUT ===== */
+
+        /* Bottom navigation bar (chỉ hiện trên mobile) */
+        .bottom-nav {
+            display: none;
+        }
+
+        @media (max-width: 767px) {
+            /* Body: để room cho bottom nav */
+            body {
+                overflow: hidden;
+            }
+
+            /* Ẩn sidebar trên mobile */
+            .sidebar {
+                display: none !important;
+            }
+
+            /* Main content chiếm toàn màn hình */
+            .main-content {
+                width: 100%;
+                flex: 1;
+            }
+
+            /* Top header gọn hơn trên mobile */
+            .top-header {
+                padding: 10px 14px;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                background: var(--bg-card);
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            }
+
+            /* Content area có padding bottom để không bị bottom nav che */
+            .content-scroll-area {
+                padding: 14px;
+                padding-bottom: 80px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                height: calc(100vh - 56px - 56px);
+            }
+
+            /* Layout wrapper */
+            .layout-wrapper {
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            /* Bottom Navigation Bar */
+            .bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 200;
+                background: var(--bg-card);
+                border-top: 1px solid var(--border-color);
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                height: calc(56px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .bottom-nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 6px 4px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                color: var(--text-gray);
+                font-size: 0.65rem;
+                gap: 2px;
+                transition: color 0.2s;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+            }
+
+            .bottom-nav-item i {
+                font-size: 1.4rem;
+                display: block;
+            }
+
+            .bottom-nav-item.active {
+                color: var(--primary);
+            }
+
+            .bottom-nav-item.active i {
+                color: var(--primary);
+            }
+
+            /* Exercise layout: stack vertically on mobile */
+            .exercise-layout {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Chapter menu on mobile: horizontal scroll */
+            .exercise-chapter-menu {
+                flex-direction: row !important;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 8px;
+                gap: 6px;
+            }
+            .exercise-chapter-menu::-webkit-scrollbar { display: none; }
+
+            .chapter-chip {
+                white-space: nowrap;
+                flex-shrink: 0;
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Flashcard size on mobile */
+            .flashcard {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 180px !important;
+            }
+
+            /* Exam card grid: single column on mobile */
+            .exam-card-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Table: horizontal scroll on mobile */
+            .chapter-table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            /* Section title smaller on mobile */
+            .section-title {
+                font-size: 1rem;
+            }
+
+            /* Viewer modal full screen on mobile */
+            #viewerModal .panel {
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            #viewerModal {
+                padding: 0;
+                align-items: flex-end;
+            }
+
+            /* Auth header: hide text, show only logout icon */
+            #authHeader .user-name-text {
+                display: none;
+            }
+
+            /* Breadcrumb smaller */
+            .breadcrumb {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Tablet (768px - 1024px): sidebar narrower */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .sidebar {
+                width: 220px;
+            }
+
+            .bottom-nav {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -288,9 +469,17 @@
 
         // Content renderers
         function changeContent(page, btnEl){
-            document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active'));
-            if(btnEl) btnEl.classList.add('active');
-            
+            // Cập nhật active state sidebar buttons
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            if(btnEl && btnEl.classList.contains('menu-btn')) btnEl.classList.add('active');
+
+            // Cập nhật active state bottom nav buttons
+            document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+            const bottomNavBtn = document.querySelector(`.bottom-nav-item[data-page="${page}"]`);
+            if(bottomNavBtn) bottomNavBtn.classList.add('active');
+            // Nếu btnEl là bottom-nav-item, cũng active nó
+            if(btnEl && btnEl.classList.contains('bottom-nav-item')) btnEl.classList.add('active');
+
             const breadcrumbMap = {
                 theory: 'Lý thuyết',
                 flashcard: 'Flashcard',
@@ -300,7 +489,7 @@
                 history: 'Lịch sử làm bài'
             };
             document.getElementById('crumb').innerText = breadcrumbMap[page] || 'Trang chủ';
-            
+
             if(page==='theory') renderTheory();
             else if(page==='flashcard') renderFlashcards();
             else if(page==='exercises') renderExercises();
@@ -1061,10 +1250,10 @@
             const el = document.getElementById('authHeader');
             if(!el) return;
             if(user){
-                el.innerHTML = `<span style="color:var(--text-gray);">Xin chào, <strong>${escapeHtml(user.name)}</strong> (${escapeHtml(user.role)})</span>
+                el.innerHTML = `<span class="user-name-text" style="color:var(--text-gray);">Xin chào, <strong>${escapeHtml(user.name)}</strong> (${escapeHtml(user.role)})</span>
                     <button class="btn" onclick="handleDashboardLogout()" style="padding:6px 12px;font-size:.85rem;">Đăng xuất</button>`;
             } else {
-                el.innerHTML = `<span style="color:var(--text-gray);">Bạn chưa đăng nhập</span>
+                el.innerHTML = `<span class="user-name-text" style="color:var(--text-gray);">Bạn chưa đăng nhập</span>
                     <a href="index.html" class="btn primary" style="padding:6px 12px;font-size:.85rem;text-decoration:none;">Đăng nhập</a>`;
             }
         }
@@ -1075,7 +1264,9 @@
 
         function init(){
             renderAuthHeader();
-            changeContent('theory');
+            // Auto-load trang đầu tiên, đồng thời đánh dấu active cho sidebar và bottom nav
+            const firstBtn = document.querySelector('.menu-btn');
+            changeContent('theory', firstBtn);
         }
         init();
 
@@ -1089,5 +1280,29 @@
         window.previewExamHtml = previewExamHtml;
         window.viewExerciseExam = viewExerciseExam;
     </script>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Điều hướng chính">
+        <button class="bottom-nav-item" onclick="changeContent('theory', this)" data-page="theory">
+            <i class='bx bx-file'></i>
+            <span>Lý thuyết</span>
+        </button>
+        <button class="bottom-nav-item" onclick="changeContent('flashcard', this)" data-page="flashcard">
+            <i class='bx bx-card'></i>
+            <span>Flashcard</span>
+        </button>
+        <button class="bottom-nav-item" onclick="changeContent('exercises', this)" data-page="exercises">
+            <i class='bx bx-edit'></i>
+            <span>Bài tập</span>
+        </button>
+        <button class="bottom-nav-item" onclick="changeContent('mockexam', this)" data-page="mockexam">
+            <i class='bx bx-task'></i>
+            <span>Thi thử</span>
+        </button>
+        <button class="bottom-nav-item" onclick="changeContent('progress', this)" data-page="progress">
+            <i class='bx bx-chart'></i>
+            <span>Tiến độ</span>
+        </button>
+    </nav>
 </body>
 </html>
