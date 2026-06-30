@@ -63,6 +63,22 @@
         .material-info strong{display:block;color:var(--text-dark);margin-bottom:4px}
         .material-info span{font-size:.85rem;color:var(--text-gray)}
         
+        .exercise-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+        .exercise-chapter-menu{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+        .chapter-chip{width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:#fff;cursor:pointer}
+        .chapter-chip:hover{background:rgba(34,179,164,.08)}
+        .chapter-chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+        .exercise-panel{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:14px}
+        .exercise-admin-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+        .exercise-exam-item{border:1px solid var(--border-color);border-radius:8px;padding:12px;background:#fff;margin-bottom:10px}
+        .exercise-exam-item h4{margin-bottom:6px}
+        .exercise-form{display:flex;flex-direction:column;gap:10px}
+        .exercise-form input,.exercise-form select,.exercise-form textarea{padding:10px;border:1px solid var(--border-color);border-radius:8px;font-size:.95rem}
+        .exercise-form textarea{min-height:200px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+        .exercise-preview-wrap{margin-top:14px;border:1px solid var(--border-color);border-radius:8px;overflow:hidden;background:#fff}
+        .exercise-preview-head{padding:10px 12px;border-bottom:1px solid var(--border-color);background:#f9fafb;font-weight:600}
+        .exercise-preview-frame{width:100%;height:360px;border:0;display:block;background:#fff}
+        @media(max-width:900px){.exercise-layout{grid-template-columns:1fr}}
         /* Modal Styles */
         @media(max-width:900px){.sidebar{display:none}}
         #viewerModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:250;align-items:center;justify-content:center;padding:18px}
@@ -190,7 +206,7 @@
         ];
 
         // Storage and initial data
-        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', history: 'ctai_history_v2' };
+        const STORAGE_KEYS = { flashcards: 'ctai_flashcards_v2', questions: 'ctai_questions_v2', history: 'ctai_history_v2', exams: 'ctai_exams_v2' };
         const DEFAULT_FLASHCARDS = [ {front: 'Hiragana: あ', back: 'Âm "a"'}, {front: '学生', back: 'Học sinh'} ];
         const DEFAULT_QUESTIONS = [ {id:1, question:'Hiragana "あ" đọc là gì?', choices:['a','i','u','e'], answer:0, explain:'Ký tự あ đọc là "a".'} ];
 
@@ -200,7 +216,51 @@
         let flashcards = loadOrDefault(STORAGE_KEYS.flashcards, DEFAULT_FLASHCARDS);
         let questions = loadOrDefault(STORAGE_KEYS.questions, DEFAULT_QUESTIONS);
         let historyItems = loadOrDefault(STORAGE_KEYS.history, []);
+        let exerciseExams = loadOrDefault(STORAGE_KEYS.exams, []);
+        if(!Array.isArray(exerciseExams)) exerciseExams = [];
+        let selectedExerciseChapter = 1;
         let currentChapter = null;
+
+        function getLoggedInUser(){
+            try { return JSON.parse(localStorage.getItem('loggedInUser') || 'null'); }
+            catch(e){ return null; }
+        }
+        function isExerciseAdmin(){
+            // Cơ chế tối thiểu: dùng role đã lưu khi đăng nhập (Admin/User) để bật quyền tạo đề thi.
+            const user = getLoggedInUser();
+            return !!(user && user.role === 'Admin');
+        }
+        function saveExerciseExams(){
+            saveAndReturn(STORAGE_KEYS.exams, exerciseExams);
+        }
+        function generateExamId(){
+            if(window.crypto && typeof window.crypto.randomUUID === 'function'){
+                return window.crypto.randomUUID();
+            }
+            return `exam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        }
+        function escapeHtml(value){
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        function sanitizeExamHtml(rawHtml){
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(String(rawHtml || ''), 'text/html');
+            doc.querySelectorAll('script, iframe, object, embed').forEach(node => node.remove());
+            doc.querySelectorAll('*').forEach(node => {
+                Array.from(node.attributes).forEach(attr => {
+                    const key = attr.name.toLowerCase();
+                    const val = String(attr.value || '').trim().toLowerCase();
+                    if(key.startsWith('on')) node.removeAttribute(attr.name);
+                    if((key === 'href' || key === 'src') && val.startsWith('javascript:')) node.removeAttribute(attr.name);
+                });
+            });
+            return doc.body.innerHTML;
+        }
 
         // Content renderers
         function changeContent(page, btnEl){
@@ -447,43 +507,130 @@
         }
 
         // Exercises
-        function renderExercises(){
+        function renderExercises(chapterId = selectedExerciseChapter){
+            selectedExerciseChapter = Number(chapterId) || 1;
             const content = document.getElementById('dynamic-content');
+            const chapterButtons = Array.from({ length: 7 }, (_, i) => {
+                const chapterNo = i + 1;
+                const activeClass = chapterNo === selectedExerciseChapter ? 'active' : '';
+                return `<button class="chapter-chip ${activeClass}" onclick="renderExercises(${chapterNo})">Chương ${chapterNo}</button>`;
+            }).join('');
             content.innerHTML = `
                 <h2 class="section-title">Bài tập</h2>
-                <div class="quiz" id="quizArea"></div>`;
-            renderQuizList();
+                <p class="small" style="margin-bottom:12px;">Chọn chương để xem đề thi. Quyền tạo đề thi chỉ hiển thị cho Admin.</p>
+                <div class="exercise-layout">
+                    <aside class="exercise-chapter-menu">${chapterButtons}</aside>
+                    <section class="exercise-panel" id="exerciseChapterPanel"></section>
+                </div>`;
+            renderExerciseChapterPanel();
         }
-        function renderQuizList(){
-            const area = document.getElementById('quizArea');
-            area.innerHTML='';
-            if(questions.length===0){
-                area.innerHTML='<div class="small">Chưa có bài tập.</div>';
+
+        function renderExerciseChapterPanel(){
+            const panel = document.getElementById('exerciseChapterPanel');
+            const examsByChapter = exerciseExams
+                .filter(exam => Number(exam.chapter) === selectedExerciseChapter)
+                .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+            const adminAction = isExerciseAdmin()
+                ? `<button class="btn primary" onclick="renderCreateExamForm(${selectedExerciseChapter})"><i class='bx bx-plus'></i> Tạo đề thi</button>`
+                : '<span class="small">Đăng nhập tài khoản Admin để tạo đề thi.</span>';
+
+            panel.innerHTML = `
+                <div class="exercise-admin-toolbar">
+                    <h3 style="margin:0;">Danh sách đề - Chương ${selectedExerciseChapter}</h3>
+                    ${adminAction}
+                </div>
+                <div id="exerciseExamList"></div>
+                <div id="exercisePreviewArea"></div>`;
+
+            const list = document.getElementById('exerciseExamList');
+            if(examsByChapter.length === 0){
+                list.innerHTML = '<p class="small">Chưa có đề thi nào cho chương này.</p>';
                 return;
             }
-            questions.forEach(q=>{
-                const qdiv = document.createElement('div');
-                qdiv.className = 'question';
-                let optionsHtml = '';
-                q.choices.forEach((c,i)=>{
-                    optionsHtml += `<div class="option" data-q="${q.id}" data-idx="${i}" onclick="handleOptionClick(this)">${c}</div>`;
-                });
-                qdiv.innerHTML = `<strong>${q.question}</strong><div class="options">${optionsHtml}</div><div class="explain">${q.explain}</div>`;
-                area.appendChild(qdiv);
+
+            examsByChapter.forEach(exam => {
+                const item = document.createElement('div');
+                item.className = 'exercise-exam-item';
+                item.innerHTML = `
+                    <h4>${escapeHtml(exam.title)}</h4>
+                    <p class="small" style="margin:0 0 10px 0;">Cập nhật: ${new Date(exam.updatedAt || exam.createdAt).toLocaleString('vi-VN')}</p>
+                    <button class="btn" onclick="viewExerciseExam('${exam.id}')">Xem đề & Preview HTML</button>`;
+                list.appendChild(item);
             });
         }
-        function handleOptionClick(el){
-            const qid = Number(el.getAttribute('data-q'));
-            const idx = Number(el.getAttribute('data-idx'));
-            const q = questions.find(x=>x.id===qid);
-            const parent = el.parentElement;
-            Array.from(parent.children).forEach(o=>{
-                o.classList.remove('correct','incorrect');
-                const oidx = Number(o.getAttribute('data-idx'));
-                if(oidx === q.answer) o.classList.add('correct');
-                else if(oidx === idx) o.classList.add('incorrect');
-            });
-            parent.nextElementSibling.style.display='block';
+
+        function renderCreateExamForm(chapterNo){
+            if(!isExerciseAdmin()){
+                alert('Chỉ Admin mới có thể tạo đề thi.');
+                return;
+            }
+            selectedExerciseChapter = Number(chapterNo) || 1;
+            const panel = document.getElementById('exerciseChapterPanel');
+            const chapterOptions = Array.from({ length: 7 }, (_, i) => {
+                const chapter = i + 1;
+                return `<option value="${chapter}" ${chapter === selectedExerciseChapter ? 'selected' : ''}>Chương ${chapter}</option>`;
+            }).join('');
+            panel.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                    <h3 style="margin:0;">Tạo đề thi mới</h3>
+                    <button class="btn" onclick="renderExerciseChapterPanel()"><i class='bx bx-arrow-back'></i> Quay lại</button>
+                </div>
+                <form class="exercise-form" onsubmit="handleCreateExerciseExam(event)">
+                    <label for="examTitle">Tên đề thi</label>
+                    <input id="examTitle" type="text" placeholder="Ví dụ: Đề luyện tập chương 3" required>
+                    <label for="examChapter">Chương</label>
+                    <select id="examChapter">${chapterOptions}</select>
+                    <label for="examHtmlContent">Nội dung HTML đề thi</label>
+                    <textarea id="examHtmlContent" placeholder="<h2>Đề thi</h2><p>Nội dung câu hỏi...</p>" required></textarea>
+                    <button class="btn primary" type="submit">Lưu đề thi</button>
+                </form>`;
+        }
+
+        function handleCreateExerciseExam(event){
+            event.preventDefault();
+            if(!isExerciseAdmin()){
+                alert('Chỉ Admin mới có thể tạo đề thi.');
+                return;
+            }
+
+            const title = document.getElementById('examTitle').value.trim();
+            const chapter = Number(document.getElementById('examChapter').value);
+            const htmlContent = document.getElementById('examHtmlContent').value.trim();
+            if(!title || !htmlContent){
+                alert('Vui lòng nhập đầy đủ tên đề thi và nội dung HTML.');
+                return;
+            }
+
+            const now = new Date().toISOString();
+            const newExam = {
+                id: generateExamId(),
+                chapter,
+                title,
+                htmlContent,
+                createdAt: now,
+                updatedAt: now
+            };
+
+            exerciseExams.unshift(newExam);
+            saveExerciseExams();
+            selectedExerciseChapter = chapter;
+            renderExercises(chapter);
+            viewExerciseExam(newExam.id);
+        }
+
+        function viewExerciseExam(examId){
+            const exam = exerciseExams.find(item => item.id === examId);
+            if(!exam) return;
+
+            const previewArea = document.getElementById('exercisePreviewArea');
+            previewArea.innerHTML = `
+                <div class="exercise-preview-wrap">
+                    <div class="exercise-preview-head">${escapeHtml(exam.title)} - Chương ${exam.chapter}</div>
+                    <iframe id="exercisePreviewFrame" class="exercise-preview-frame" sandbox></iframe>
+                </div>`;
+
+            document.getElementById('exercisePreviewFrame').srcdoc = sanitizeExamHtml(exam.htmlContent || '<p>Nội dung đề trống.</p>');
         }
 
         // Mock exam (Thi thử)
