@@ -70,14 +70,28 @@
         .chapter-chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
         .exercise-panel{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:14px}
         .exercise-admin-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-        .exercise-exam-item{border:1px solid var(--border-color);border-radius:8px;padding:12px;background:#fff;margin-bottom:10px}
-        .exercise-exam-item h4{margin-bottom:6px}
+        .exercise-admin-toolbar h3{margin:0}
+        .exam-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:12px}
+        .exam-card{background:#fff;border:1px solid var(--border-color);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:box-shadow .2s,border-color .2s}
+        .exam-card:hover{box-shadow:0 4px 16px rgba(34,179,164,.12);border-color:var(--primary)}
+        .exam-card-title{font-weight:600;font-size:1rem;color:var(--text-dark)}
+        .exam-card-meta{font-size:.82rem;color:var(--text-gray)}
+        .exam-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+        .btn.danger{background:#fee2e2;color:#dc2626;border-color:#fca5a5}
+        .btn.danger:hover{background:#fca5a5}
+        .btn.warning{background:#fef3c7;color:#d97706;border-color:#fcd34d}
+        .btn.warning:hover{background:#fcd34d}
+        .exam-inline-viewer{margin-top:12px;border:1px solid var(--border-color);border-radius:10px;overflow:hidden;background:#fff}
+        .exam-inline-viewer-head{padding:10px 14px;background:#f9fafb;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;font-weight:600}
+        .exam-inline-frame{width:100%;height:480px;border:none;display:block}
         .exercise-form{display:flex;flex-direction:column;gap:10px}
         .exercise-form input,.exercise-form select,.exercise-form textarea{padding:10px;border:1px solid var(--border-color);border-radius:8px;font-size:.95rem}
         .exercise-form textarea{min-height:200px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-        .exercise-preview-wrap{margin-top:14px;border:1px solid var(--border-color);border-radius:8px;overflow:hidden;background:#fff}
-        .exercise-preview-head{padding:10px 12px;border-bottom:1px solid var(--border-color);background:#f9fafb;font-weight:600}
-        .exercise-preview-frame{width:100%;height:360px;border:0;display:block;background:#fff}
+        .code-textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.88rem;min-height:220px;background:#1e1e2e;color:#cdd6f4;border-color:#45475a;border-radius:8px;padding:12px}
+        .code-textarea::placeholder{color:#a6adc8}
+        .form-preview-wrap{margin-top:10px;border:2px dashed var(--primary);border-radius:8px;overflow:hidden}
+        .form-preview-head{padding:8px 12px;background:rgba(34,179,164,.08);font-size:.85rem;font-weight:600;color:var(--primary)}
+        .form-preview-frame{width:100%;height:320px;border:none;display:block}
         @media(max-width:900px){.exercise-layout{grid-template-columns:1fr}}
         /* Modal Styles */
         @media(max-width:900px){.sidebar{display:none}}
@@ -228,6 +242,7 @@
         let exerciseExams = loadOrDefault(STORAGE_KEYS.exams, []);
         if(!Array.isArray(exerciseExams)) exerciseExams = [];
         let selectedExerciseChapter = 1;
+        let openedExerciseExamId = null;
         let currentChapter = null;
 
         function getLoggedInUser(){
@@ -706,11 +721,11 @@
 
             const adminAction = isExerciseAdmin()
                 ? `<button class="btn primary" onclick="renderCreateExamForm(${selectedExerciseChapter})"><i class='bx bx-plus'></i> Tạo đề thi</button>`
-                : '<span class="small">Đăng nhập tài khoản Admin để tạo đề thi.</span>';
+                : '<span class="small">Đăng nhập Admin để tạo đề.</span>';
 
             panel.innerHTML = `
                 <div class="exercise-admin-toolbar">
-                    <h3 style="margin:0;">Danh sách đề - Chương ${selectedExerciseChapter}</h3>
+                    <h3>Danh sách đề - Chương ${selectedExerciseChapter}</h3>
                     ${adminAction}
                 </div>
                 <div id="exerciseExamList"></div>
@@ -719,18 +734,49 @@
             const list = document.getElementById('exerciseExamList');
             if(examsByChapter.length === 0){
                 list.innerHTML = '<p class="small">Chưa có đề thi nào cho chương này.</p>';
+                document.getElementById('exercisePreviewArea').innerHTML = '';
                 return;
             }
 
+            const grid = document.createElement('div');
+            grid.className = 'exam-card-grid';
             examsByChapter.forEach(exam => {
                 const item = document.createElement('div');
-                item.className = 'exercise-exam-item';
+                const createdAtValue = exam.createdAt;
+                const updatedAtValue = exam.updatedAt;
+                const createdLabel = createdAtValue ? new Date(createdAtValue).toLocaleString('vi-VN') : 'N/A';
+                const updatedLabel = updatedAtValue ? new Date(updatedAtValue).toLocaleString('vi-VN') : 'N/A';
+                item.className = 'exam-card';
                 item.innerHTML = `
-                    <h4>${escapeHtml(exam.title)}</h4>
-                    <p class="small" style="margin:0 0 10px 0;">Cập nhật: ${new Date(exam.updatedAt || exam.createdAt).toLocaleString('vi-VN')}</p>
-                    <button class="btn" onclick="viewExerciseExam('${exam.id}')">Xem đề & Preview HTML</button>`;
-                list.appendChild(item);
+                    <div class="exam-card-title">${escapeHtml(exam.title)}</div>
+                    <div class="exam-card-meta">Chương ${exam.chapter}</div>
+                    <div class="exam-card-meta">Tạo: ${createdLabel}</div>
+                    <div class="exam-card-meta">Cập nhật: ${updatedLabel}</div>
+                    <div class="exam-card-actions">
+                        <button class="btn" onclick="viewExerciseExam('${exam.id}')">${openedExerciseExamId === exam.id ? 'Đóng bài làm' : 'Làm bài'}</button>
+                        ${isExerciseAdmin() ? `<button class="btn warning" onclick="renderEditExamForm('${exam.id}')">Sửa</button>
+                        <button class="btn danger" onclick="deleteExerciseExam('${exam.id}')">Xóa</button>` : ''}
+                    </div>`;
+                grid.appendChild(item);
             });
+            list.innerHTML = '';
+            list.appendChild(grid);
+
+            const previewArea = document.getElementById('exercisePreviewArea');
+            const openedExam = examsByChapter.find(exam => exam.id === openedExerciseExamId);
+            if(!openedExam){
+                previewArea.innerHTML = '';
+                return;
+            }
+            previewArea.innerHTML = `
+                <div class="exam-inline-viewer">
+                    <div class="exam-inline-viewer-head">
+                        <span>${escapeHtml(openedExam.title)} - Chương ${openedExam.chapter}</span>
+                        <button class="btn" onclick="viewExerciseExam('${openedExam.id}')">Đóng</button>
+                    </div>
+                    <iframe id="exercisePreviewFrame" class="exam-inline-frame" sandbox></iframe>
+                </div>`;
+            document.getElementById('exercisePreviewFrame').srcdoc = sanitizeExamHtml(openedExam.htmlContent || '<p>Nội dung đề trống.</p>');
         }
 
         function renderCreateExamForm(chapterNo){
@@ -751,11 +797,16 @@
                 </div>
                 <form class="exercise-form" onsubmit="handleCreateExerciseExam(event)">
                     <label for="examTitle">Tên đề thi</label>
-                    <input id="examTitle" type="text" placeholder="Ví dụ: Đề luyện tập chương 3" required>
+                    <input id="examTitle" type="text" placeholder="Ví dụ: Đề luyện tập chương 3 - Trắc nghiệm" required>
                     <label for="examChapter">Chương</label>
                     <select id="examChapter">${chapterOptions}</select>
                     <label for="examHtmlContent">Nội dung HTML đề thi</label>
-                    <textarea id="examHtmlContent" placeholder="<h2>Đề thi</h2><p>Nội dung câu hỏi...</p>" required></textarea>
+                    <textarea id="examHtmlContent" class="code-textarea" placeholder="<h2>Đề thi chương ${selectedExerciseChapter}</h2>\n<p>Nội dung câu hỏi...</p>" required></textarea>
+                    <button class="btn" type="button" onclick="previewExamHtml('examHtmlContent','examCreatePreviewFrame')">👁️ Preview trực tiếp</button>
+                    <div class="form-preview-wrap">
+                        <div class="form-preview-head">Xem trước HTML</div>
+                        <iframe id="examCreatePreviewFrame" class="form-preview-frame" sandbox></iframe>
+                    </div>
                     <button class="btn primary" type="submit">Lưu đề thi</button>
                 </form>`;
         }
@@ -788,22 +839,107 @@
             exerciseExams.unshift(newExam);
             saveExerciseExams();
             selectedExerciseChapter = chapter;
+            openedExerciseExamId = null;
             renderExercises(chapter);
-            viewExerciseExam(newExam.id);
+        }
+
+        function renderEditExamForm(examId){
+            if(!isExerciseAdmin()){
+                alert('Chỉ Admin mới có thể sửa đề thi.');
+                return;
+            }
+            const exam = exerciseExams.find(item => item.id === examId);
+            if(!exam){
+                alert('Không tìm thấy đề thi để sửa.');
+                return;
+            }
+            selectedExerciseChapter = Number(exam.chapter) || 1;
+            const panel = document.getElementById('exerciseChapterPanel');
+            const chapterOptions = Array.from({ length: 7 }, (_, i) => {
+                const chapter = i + 1;
+                return `<option value="${chapter}" ${chapter === Number(exam.chapter) ? 'selected' : ''}>Chương ${chapter}</option>`;
+            }).join('');
+            panel.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                    <h3 style="margin:0;">Chỉnh sửa đề thi</h3>
+                    <button class="btn" onclick="renderExerciseChapterPanel()"><i class='bx bx-arrow-back'></i> Quay lại</button>
+                </div>
+                <form class="exercise-form" onsubmit="handleEditExerciseExam(event, '${exam.id}')">
+                    <label for="editExamTitle">Tên đề thi</label>
+                    <input id="editExamTitle" type="text" placeholder="Ví dụ: Đề luyện tập chương 3 - Trắc nghiệm" value="${escapeHtml(exam.title)}" required>
+                    <label for="editExamChapter">Chương</label>
+                    <select id="editExamChapter">${chapterOptions}</select>
+                    <label for="editExamHtmlContent">Nội dung HTML đề thi</label>
+                    <textarea id="editExamHtmlContent" class="code-textarea" placeholder="<h2>Đề thi</h2>\n<p>Nội dung câu hỏi...</p>" required>${escapeHtml(exam.htmlContent)}</textarea>
+                    <button class="btn" type="button" onclick="previewExamHtml('editExamHtmlContent','examEditPreviewFrame')">👁️ Preview</button>
+                    <div class="form-preview-wrap">
+                        <div class="form-preview-head">Xem trước HTML</div>
+                        <iframe id="examEditPreviewFrame" class="form-preview-frame" sandbox></iframe>
+                    </div>
+                    <button class="btn primary" type="submit">Lưu thay đổi</button>
+                </form>`;
+        }
+
+        function handleEditExerciseExam(event, examId){
+            event.preventDefault();
+            if(!isExerciseAdmin()){
+                alert('Chỉ Admin mới có thể sửa đề thi.');
+                return;
+            }
+            const examIndex = exerciseExams.findIndex(item => item.id === examId);
+            if(examIndex === -1){
+                alert('Không tìm thấy đề thi để cập nhật.');
+                return;
+            }
+            const title = document.getElementById('editExamTitle').value.trim();
+            const chapter = Number(document.getElementById('editExamChapter').value);
+            const htmlContent = document.getElementById('editExamHtmlContent').value.trim();
+            if(!title || !htmlContent){
+                alert('Vui lòng nhập đầy đủ tên đề thi và nội dung HTML.');
+                return;
+            }
+            exerciseExams[examIndex] = {
+                ...exerciseExams[examIndex],
+                title,
+                chapter,
+                htmlContent,
+                updatedAt: new Date().toISOString()
+            };
+            saveExerciseExams();
+            selectedExerciseChapter = chapter;
+            openedExerciseExamId = null;
+            renderExercises(chapter);
+        }
+
+        function deleteExerciseExam(examId){
+            if(!isExerciseAdmin()){
+                alert('Chỉ Admin mới có thể xóa đề thi.');
+                return;
+            }
+            const exam = exerciseExams.find(item => item.id === examId);
+            if(!exam) return;
+            if(!confirm(`Bạn có chắc muốn xóa đề "${exam.title}"?`)) return;
+            exerciseExams = exerciseExams.filter(item => item.id !== examId);
+            saveExerciseExams();
+            if(openedExerciseExamId === examId){
+                openedExerciseExamId = null;
+            }
+            renderExerciseChapterPanel();
+        }
+
+        function previewExamHtml(textareaId, previewFrameId){
+            const textarea = document.getElementById(textareaId);
+            const frame = document.getElementById(previewFrameId);
+            if(!textarea || !frame) return;
+            frame.srcdoc = sanitizeExamHtml(textarea.value || '<p>Nội dung đề trống.</p>');
         }
 
         function viewExerciseExam(examId){
             const exam = exerciseExams.find(item => item.id === examId);
             if(!exam) return;
-
-            const previewArea = document.getElementById('exercisePreviewArea');
-            previewArea.innerHTML = `
-                <div class="exercise-preview-wrap">
-                    <div class="exercise-preview-head">${escapeHtml(exam.title)} - Chương ${exam.chapter}</div>
-                    <iframe id="exercisePreviewFrame" class="exercise-preview-frame" sandbox></iframe>
-                </div>`;
-
-            document.getElementById('exercisePreviewFrame').srcdoc = sanitizeExamHtml(exam.htmlContent || '<p>Nội dung đề trống.</p>');
+            openedExerciseExamId = openedExerciseExamId === examId ? null : examId;
+            selectedExerciseChapter = Number(exam.chapter) || selectedExerciseChapter;
+            renderExerciseChapterPanel();
         }
 
         // Mock exam (Thi thử)
@@ -945,6 +1081,13 @@
 
         window.changeContent = changeContent;
         window.closeViewer = closeViewer;
+        window.renderCreateExamForm = renderCreateExamForm;
+        window.handleCreateExerciseExam = handleCreateExerciseExam;
+        window.renderEditExamForm = renderEditExamForm;
+        window.handleEditExerciseExam = handleEditExerciseExam;
+        window.deleteExerciseExam = deleteExerciseExam;
+        window.previewExamHtml = previewExamHtml;
+        window.viewExerciseExam = viewExerciseExam;
     </script>
 </body>
 </html>
